@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+
+declare -r VASPRUN_DIR="$( cd "$( dirname "$0" )" && pwd )"
+declare -r PYTHON="$( which python )"
+
+if [ -z "${PYTHON}" ]; then
+  echo "[error] No program point to command `python`!"
+  exit 1
+fi
+
+echo "" 
+echo "    +--------------------+"
+echo "====| Welcome to vasprun |===="
+echo "    +--------------------+"
+echo ""
+echo "+----------------------------+"
+echo "|     Tips Before Start      |"
+echo "+----------------------------+"
+echo "[tips] Please double check the vasprun & vasprun.py are in the vasprun path."
+echo "[tips] Please make sure you are using vaspkit-1.12 ..."
+read -p '[input] Press <Enter> to confirm...'
+
+${PYTHON} ${VASPRUN_DIR}/vasprun.py

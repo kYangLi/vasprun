@@ -1,7 +1,6 @@
 # system 
 .DS_Store
 plot/example/*
-server_test/lib/private
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
