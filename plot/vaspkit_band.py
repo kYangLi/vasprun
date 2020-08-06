@@ -7,6 +7,7 @@ import sys
 import getopt
 import re
 import matplotlib.pyplot as plt
+plt.switch_backend('agg') # For GUI less server
 import json
 
 def grep(tstr, file):
@@ -141,6 +142,26 @@ def main(argv):
       spin_up_band_energys[band_index][kpoint_index] = spin_up_energy
       spin_dn_band_energys[band_index][kpoint_index] = spin_dn_energy
     energy_index += 1
+
+  # +-----------+
+  # | Band Json |
+  # +-----------+
+  data = {}
+  data["spin_num"] = spin_num
+  data["plot_energy_window"] = [min_plot_energy, max_plot_energy]
+  data["hsk_symbol_list"] = hsk_symbol_list
+  data["hsk_corrdinate_list"] = hsk_corrdinate_list
+  data["kline_coors"] = kline_coors
+  if spin_num == 1:
+    data["energys"] = band_energys
+  if spin_num == 2:
+    data["energys"] = {
+      "up" : spin_up_band_energys,
+      "dn" : spin_dn_band_energys
+    }
+  json_file = plot_filename + '.json'
+  with open(json_file, 'w') as jfwp:
+    json.dump(data, jfwp)
 
   # +-----------+
   # | Band Plot |

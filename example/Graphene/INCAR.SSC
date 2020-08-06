@@ -1,42 +1,42 @@
-#===========================#
-#======= INCAR.RELAX =======#
-#===========================#
+#=========================#
+#======= INCAR.SSC =======#
+#=========================#
 
 # +--------------------+
 # | System Basic Info. |
 # +--------------------+
-SYSTEM      =  Relax
+SYSTEM      =  Static
 ISTART      =  0
-NCORE       =  6
+NCORE       =  4
 LSCALAPACK  =  .FALSE.
 
 # +------------------+
 # | Ionic Relaxation |
 # +------------------+
-IBRION  =  2
+IBRION  =  -1
 ISIF    =  3
-NSW     =  200
+NSW     = 0
 POTIM   =  0.1
 EDIFFG  =  -1E-3
 
 # +-----------------------+
 # | Electronic Relaxation |
 # +-----------------------+
-ENCUT    =  530
-PREC     =  Normal
-EDIFF    =  1.0E-6  
+ENCUT    =  500
+PREC     =  Accurate
+EDIFF    =  1.0E-8
 ICHARG   =  2
 ISYM     =  2
-NELMIN   =  6
+NELMIN   =  6 
 NELM     =  300
-ISMEAR   =  0
+ISMEAR   =  0 
 SIGMA    =  0.05
-LCHARG   =  .FALSE.
-LWAVE    =  .FALSE.
+LCHARG   =  .TRUE. 
+LWAVE    =  .TRUE. 
 LORBIT   =  11
 
 # +--------------------------+
 # | Colinear or Non-colinear |
 # +--------------------------+
-ISPIN          =  2
+ISPIN          =  2 
 MAGMOM         =  0 0

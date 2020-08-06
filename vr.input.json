@@ -10,6 +10,5 @@
   "nodes_quantity":1,
   "pbs_walltime":48,
   "pbs_queue":"cmt",
-  "band_plot_energy_window":[-2,2]
-  }
-  
+  "plot_energy_window":[-2,2]
+}

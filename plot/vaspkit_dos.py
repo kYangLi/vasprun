@@ -17,6 +17,7 @@ import sys
 import getopt
 import re
 import matplotlib.pyplot as plt
+plt.switch_backend('agg') # For GUI less server
 import json
 
 def grep(tstr, file):
@@ -94,6 +95,24 @@ def main(argv):
     elif spin_num == 2:
       up_doss.append(float(dos_data_line[1]))
       dn_doss.append(float(dos_data_line[2]))
+
+  # +----------+
+  # | DOS Json |
+  # +----------+
+  data = {}
+  data["spin_num"] = spin_num
+  data["plot_energy_window"] = [min_plot_energy, max_plot_energy]
+  data["energys"] = energys
+  if spin_num == 1:
+    data["doss"] = doss
+  if spin_num == 2:
+    data["doss"] = {
+      "up" : up_doss,
+      "dn" : dn_doss
+    }
+  json_file = plot_filename + '.json'
+  with open(json_file, 'w') as jfwp:
+    json.dump(data, jfwp)
 
   # +----------+
   # | DOS Plot |

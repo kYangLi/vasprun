@@ -30,6 +30,16 @@ def grep(tstr, file):
       targets.append(line)
   return targets
 
+def grep_index(tstr, file):
+  with open(file) as frp:
+    lines = frp.readlines()
+  targets_line_index = []
+  index = 0
+  for line in lines:
+    if tstr in line:
+      targets_line_index.append(index)
+    index += 1
+  return targets_line_index
 
 def mpirun(filename_list, calc_para_list, vasp):
   vasp_log = filename_list["vasp_log"]
@@ -67,7 +77,25 @@ def res_collect(filename_list, calc_para_list, time_spend, task_tag):
     with open(result_json) as jfrp:
       res_record = json.load(jfrp)
   else:
-    res_record = {}
+    res_record = {"time"           : {},
+                  "lattice_para"   : {},
+                  "fermi"          : {}, 
+                  "energy"         : {}, 
+                  "force_per_atom" : {}, 
+                  "total_mag"      : {}
+    }
+  # Lattice constant
+  with open('OUTCAR') as frp:
+    lines = frp.readlines()
+  index = 0
+  for line in lines:
+    if 'length of vectors' in line:
+      lc_index = index
+    index += 1
+  lc_index += 1
+  lcs = lines[lc_index].split(' ')
+  lcs = list(filter(None, lines[lc_index].split(' ')))
+  lcs = [float(val) for val in lcs[:3]]
   # Fermi level
   fermi_levels = grep('fermi', 'OUTCAR')
   fermi_level = fermi_levels[-1].split(':')[1].split('X')[0].replace(' ','')
@@ -77,24 +105,36 @@ def res_collect(filename_list, calc_para_list, time_spend, task_tag):
   total_energy = total_energys[-1].split('=')[2].replace(' ','')
   total_energy = float(total_energy)
   # Total force
-  total_forces = grep('total drift', 'OUTCAR')
-  total_force = total_forces[-1].split(':')[1].split(' ')
-  total_force = list(filter(None, total_force))
-  total_force[0] = float(total_force[0])
-  total_force[1] = float(total_force[1])
-  total_force[2] = float(total_force[2])
+  with open('POSCAR') as frp:
+    lines = frp.readlines()
+  atom_num = lines[6]
+  atom_num = atom_num.replace('\n','')
+  atom_num = list(filter(None, atom_num.split(' ')))
+  atom_num_int = [int(val) for val in atom_num]
+  atom_num = sum(atom_num_int)
+  force_per_atoms = grep('total drift', 'OUTCAR')
+  force_per_atom = force_per_atoms[-1].split(':')[1].split(' ')
+  force_per_atom = list(filter(None, force_per_atom))
+  force_per_atom[0] = float(force_per_atom[0])/atom_num
+  force_per_atom[1] = float(force_per_atom[1])/atom_num
+  force_per_atom[2] = float(force_per_atom[2])/atom_num
   # Total magnet
   total_mags = grep('mag=', 'OSZICAR')
   total_mag = total_mags[-1].split('=')[4].replace(' ','')
   total_mag = float(total_mag)
+  # Total time
+  total_time = res_record["time"].get("total", 0)
+  total_time += time_spend
   # Result record
-  res_record[task_tag] = {"time"        : time_spend,
-                          "fermi"       : fermi_level, 
-                          "energy"      : total_energy, 
-                          "total_force" : total_force, 
-                          "total_mag"   : total_mag}
+  res_record["time"]["total"] = total_time
+  res_record["time"][task_tag] = time_spend
+  res_record["lattice_para"][task_tag] = lcs
+  res_record["fermi"][task_tag] = fermi_level
+  res_record["energy"][task_tag] = total_energy
+  res_record["force_per_atom"][task_tag] = force_per_atom
+  res_record["total_mag"][task_tag] = total_mag
   with open(result_json, 'w') as jfwp:
-    json.dump(res_record, jfwp)
+    json.dump(res_record, jfwp, indent=1)
   return 0
 
 
@@ -180,7 +220,8 @@ def band_plot_collect(filename_list, calc_para_list, path_list):
   if not os.path.isdir(result_folder):
     print("[error] No result folder avaliable...")
     sys.exit(1)
-  band_res_folder = os.path.join(result_folder, 'band')
+  band_res_folder = filename_list["band_res_folder"]
+  band_res_folder = os.path.join(result_folder, band_res_folder)
   if not os.path.isdir(band_res_folder):
     os.mkdir(band_res_folder)
   ## Use vaspkit to generate the file
@@ -202,10 +243,10 @@ def band_plot_collect(filename_list, calc_para_list, path_list):
   band_plot_script = "%s/plot/vaspkit_band.py" %vasprun_path
   python_exec = path_list["python_exec"]
   band_fig = filename_list["band_fig"]
-  bpew = calc_para_list["band_plot_energy_window"]
+  pew = calc_para_list["plot_energy_window"]
   os.chdir(band_res_folder)
   command = "%s %s -n %s -u %f -d %f" %(python_exec, band_plot_script,
-                                        band_fig, bpew[1], bpew[0])
+                                        band_fig, pew[1], pew[0])
   _ = os.system(command)
   _ = os.system("ln -s %s band_plot.py" %band_plot_script)
   os.chdir(curr_path)
@@ -265,7 +306,8 @@ def dos_plot_collect(filename_list, calc_para_list, path_list):
   if not os.path.isdir(result_folder):
     print("[error] No result folder avaliable...")
     sys.exit(1)
-  dos_res_folder = os.path.join(result_folder, 'dos')
+  dos_res_folder = filename_list["dos_res_folder"]
+  dos_res_folder = os.path.join(result_folder, dos_res_folder)
   if not os.path.isdir(dos_res_folder):
     os.mkdir(dos_res_folder)
   ## Use vaspkit to generate the file
@@ -285,10 +327,10 @@ def dos_plot_collect(filename_list, calc_para_list, path_list):
   python_exec = path_list["python_exec"]
   dos_plot_script = "%s/plot/vaspkit_dos.py" %vasprun_path
   dos_fig = filename_list["dos_fig"]
-  bpew = calc_para_list["band_plot_energy_window"]
+  pew = calc_para_list["plot_energy_window"]
   os.chdir(dos_res_folder)
   command = "%s %s -n %s -u %f -d %f" %(python_exec, dos_plot_script, 
-                                        dos_fig,  bpew[1], bpew[0])
+                                        dos_fig,  pew[1], pew[0])
   _ = os.system(command)
   _ = os.system("ln -s %s dos_plot.py" %dos_plot_script)
   os.chdir(curr_path)
