@@ -53,9 +53,11 @@ def get_bandgap_info(file):
   bandgap_info = {}
   # Get homo index
   homo_index = grep('HOMO Band', file)
-  if homo_index == []:
-    return False
-  homo_index = int(homo_index[0].split()[-1])
+  if not homo_index:
+    homo_index = grep('HOMO & LUMO Bands:', file)
+    homo_index = int(homo_index[0].split()[-2])
+  else: 
+    homo_index = int(homo_index[0].split()[-1])
   bandgap_info["homo_index"] = homo_index
   # Get band gap
   band_gap = grep('Band Gap', file)
@@ -521,10 +523,10 @@ def get_report_info(calc_objs_infos, obj):
   lib_band_gap = str(lib_band_gap)
   lib_band_homo = str(lib_band_homo)
   lib_band_vbm = str(lib_band_vbm)
-  lib_mag_relax = str(lib_mag_relax)
-  lib_mag_ssc = str(lib_mag_ssc)
-  lib_mag_band = str(lib_mag_band)
-  lib_mag_dos = str(lib_mag_dos)
+  lib_mag_relax = '%.6f'%lib_mag_relax
+  lib_mag_ssc = '%.6f'%lib_mag_ssc
+  lib_mag_band = '%.6f'%lib_mag_band
+  lib_mag_dos = '%.6f'%lib_mag_dos
   calc_cpu_nodes = str(calc_cpu_nodes)
   calc_cpu_cores = str(calc_cpu_cores)
   calc_time_relax = str(round(calc_time_relax))
@@ -545,10 +547,10 @@ def get_report_info(calc_objs_infos, obj):
   calc_band_gap = str(calc_band_gap)
   calc_band_homo = str(calc_band_homo)
   calc_band_vbm = str(calc_band_vbm)
-  calc_mag_relax = str(calc_mag_relax)
-  calc_mag_ssc = str(calc_mag_ssc)
-  calc_mag_band = str(calc_mag_band)
-  calc_mag_dos = str(calc_mag_dos)
+  calc_mag_relax = '%.6f'%calc_mag_relax
+  calc_mag_ssc = '%.6f'%calc_mag_ssc
+  calc_mag_band = '%.6f'%calc_mag_band
+  calc_mag_dos = '%.6f'%calc_mag_dos
   com_cpu_nodes = str(com_cpu_nodes)
   com_cpu_cores = str(com_cpu_cores)
   com_time_relax = str(round(com_time_relax))
@@ -569,10 +571,10 @@ def get_report_info(calc_objs_infos, obj):
   com_band_gap = str(com_band_gap)
   com_band_homo = str(com_band_homo)
   com_band_vbm = str(com_band_vbm)
-  com_mag_relax = str(com_mag_relax)
-  com_mag_ssc = str(com_mag_ssc)
-  com_mag_band = str(com_mag_band)
-  com_mag_dos = str(com_mag_dos)
+  com_mag_relax = '%.6f'%com_mag_relax
+  com_mag_ssc = '%.6f'%com_mag_ssc
+  com_mag_band = '%.6f'%com_mag_band
+  com_mag_dos = '%.6f'%com_mag_dos
   com_band_diff = str(com_band_diff)
   com_dos_diff = str(com_dos_diff)
   return lib_cpu_nodes, lib_cpu_cores, lib_time_relax, lib_time_ssc, \
