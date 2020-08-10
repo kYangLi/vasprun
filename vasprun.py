@@ -8,6 +8,17 @@ import sys
 import json
 
 
+def grep(tstr, file):
+  with open(file) as frp:
+    lines = frp.readlines()
+  targets = []
+  for line in lines:
+    if tstr in line:
+      line = line.replace('\n','')
+      targets.append(line)
+  return targets
+
+
 def check_input_json(vasprun_path):
   input_json = 'vr.input.json'
   if not os.path.isfile(input_json):
@@ -38,7 +49,7 @@ def read_parameters():
                    "result_folder"   : 'RESULT',
                    "band_res_folder" : 'band',
                    "dos_res_folder"  : 'dos',
-                   "result_json"     : 'res.json',
+                   "result_json"     : 'result.json',
                    "vasp_log"        : 'vasp.log',
                    "vaspkit_log"     : 'vaspkit.log',
                    "band_fig"        : 'band',
@@ -115,6 +126,7 @@ def read_parameters():
     print("[para] Using the relax VASP: %s" %(relax_vasp))
   else:
     print("[skip] The relax step is not in the task list...")
+    print("[skip] Skip the read in for relax VASP...")
   print("")
   # VASP for SSC
   if task_list[1] == 'T' or task_list[3] == 'T':
@@ -131,6 +143,7 @@ def read_parameters():
     print("[para] Using the SSC VASP: %s" %(ssc_vasp))
   else:
     print("[skip] The ssc step is not in the task list...")
+    print("[skip] Skip the read in for SSC VASP...")
   print("")
   # VASPKIT
   if task_list[2] == 'T' or task_list[3] == 'T':
@@ -146,15 +159,18 @@ def read_parameters():
       sys.exit(1)
     # Check vaspkit version:
     vk_res = os.popen('echo 0 | %s' %vaspkit).read()
-    vk_version = vk_res.split('VASPKIT Version:')[1].split(' ')
-    vk_version = list(filter(None, vk_version))[0]
+    vk_version = vk_res.split('VASPKIT Version:')[1].split()[0]
     print("[para] Using the vaspkit: %s" %(vaspkit))
     print("[para] Current vaspkit version is: %s" %vk_version)
     if vk_version != '1.12':
       print("[error] Please using the vaspkit-1.12 ...")
+      print("[tips] Go to website: ")
+      print("  https://sourceforge.net/projects/vaspkit/files/Binaries/vaspkit.1.12.linux.x64.tar.gz/download")
+      print("  to download the vaspkit-1.12...")
       sys.exit()
   else:
     print("[skip] The band&dos step is not in the task list...")
+    print("[skip] Skip the read in for VASPKIT...")
   print("")
   # System Type
   print("[do] Read in the system type...")
@@ -175,7 +191,7 @@ def read_parameters():
   if (not isinstance(default_cores_per_node, int)) or \
      (default_cores_per_node <= 0):
      default_cores_per_node = 1
-  print("[input] Please input the nodes quantity. [ %d ]"
+  print("[input] Please input the number of cores per node. [ %d ]"
         %default_cores_per_node)
   cores_per_node = input('> ')
   if cores_per_node.replace(' ','') == '':
@@ -247,13 +263,13 @@ def read_parameters():
     default_pew = calc_para_list.get("plot_energy_window")
     if not default_pew:
       default_pew = [-6, 6]
-    print("[input] Please input the plot energy window. [ %f %f ]" 
+    print("[input] Please input the plot energy window. [ %f, %f ]" 
           %(default_pew[0], default_pew[1]))
     pew = input('> ')
     if pew.replace(' ','') == '':
       pew = default_pew
     else:
-      pew = list(filter(None, pew.split(' ')))
+      pew = pew.split()
       pew[0] = float(pew[0])
       pew[1] = float(pew[1])
       if pew[1] <= pew[0]:
@@ -271,9 +287,9 @@ def record_parameters(filename_list, calc_para_list, path_list):
                    "calc_para" : calc_para_list,
                    "path_list" : path_list}
   with open('vr.input.json', 'w') as jfwp:
-    json.dump(calc_para_list, jfwp, indent=1)
+    json.dump(calc_para_list, jfwp, indent=2)
   with open('vr.allpara.json', 'w') as jfwp:
-    json.dump(all_para_list, jfwp, indent=1)
+    json.dump(all_para_list, jfwp, indent=2)
   return 0
 
 
@@ -299,8 +315,8 @@ def file_check(calc_para_list):
     sys.exit(1)
   with open('POSCAR') as frp:
     lines = frp.readlines()
-  element_list = list(filter(None, lines[5].replace('\n','').split(' ')))
-  for element in element_list:
+  poscar_elements = lines[5].replace('\n','').split()
+  for element in poscar_elements:
     if element not in element_table:
       print("[error] POSCAR element list error...")
       print("[error] Please make sure the 6th line is the element list...")
@@ -309,16 +325,10 @@ def file_check(calc_para_list):
   print("")
   ## POTCAR
   print("[do] Checking POTCAR...")
-  with open('POTCAR') as frp:
-    lines = frp.readlines()
-  targets = []
-  for line in lines:
-    if 'VRH' in line:
-      targets.append(line)
-  for index in range(len(targets)):
-    targets[index] = targets[index].split('=')[1].split(':')[0].replace(' ','')
-  potcar_elements = targets
-  if potcar_elements != element_list:
+  potcar_elements = grep('VRH', 'POTCAR')
+  potcar_elements = \
+    [val.split('=')[1].split(':')[0].replace(' ','') for val in potcar_elements]
+  if potcar_elements != poscar_elements:
     print("[error] POTCAR, POSCAR elements do not match...")
     sys.exit(1)
   print("[done] POTCAR PASS.")
@@ -428,8 +438,8 @@ def vasp_submit(filename_list, calc_para_list, path_list):
   print("[do] %s" %command)
   job_id = os.popen(command).read().replace('\n','')
   if (sys_type == 'slurm') or (sys_type == 'nscc'):
-    job_id = list(filter(None, job_id.split(" ")))[-1]
-  print("[done] JOB ID: " + job_id)
+    job_id = job_id.split()[-1]
+  print("[done] Job ID: " + job_id)
   return job_id
 
 
@@ -447,39 +457,46 @@ def post_process(job_id, calc_para_list, filename_list):
   result_folder = filename_list["result_folder"]
   mpi_machinefile = filename_list["mpi_machinefile"]
   task_name = calc_para_list["task_name"]
+  # Kill job script
   if sys_type == 'pbs':
-    kill_job = '''#!/bin/bash
-    qdel %s
-    ''' %(job_id)
+    kill_job = [
+      '#!/bin/bash',
+      'qdel %s'%(job_id)
+    ]
   elif sys_type == 'slurm':
-    kill_job = '''#!/bin/bash
-    scancel %s
-    ''' %(job_id)
+    kill_job = [
+      '#!/bin/bash',
+      'scancel %s'%(job_id)
+    ]
   elif sys_type == 'nscc':
-    kill_job = '''#!/bin/bash
-    yhcancel %s
-    ''' %(job_id)
-  clean_folder = '''#!/bin/bash
-  read -p "Press <Enter> to confirm..."
-  mv POSCAR.INIT POSCAR
-  rm -rf *-%s
-  rm -rf *-%s
-  rm -rf *-%s
-  rm -rf *-%s
-  rm -rf %s
-  rm     POSCAR.*
-  rm     %s.o*
-  rm     slurm-*.out
-  rm     %s
-  rm     vasp_submit.*.sh
-  rm     vr.allpara.json
-  rm     _KILLJOB.sh
-  rm     _CLEAN.sh''' %(relax_folder, ssc_folder, band_folder, 
-                        dos_folder, result_folder, task_name, mpi_machinefile)
+    kill_job = [
+      '#!/bin/bash',
+      'yhcancel %s'%(job_id)
+    ]
   with open("_KILLJOB.sh", 'w') as fwp:
-    fwp.write(kill_job)
+    for line in kill_job:
+      fwp.write(line + '\n')
+  # Clean script
+  clean_folder = [
+    '#!/bin/bash',
+    'read -p "Press <Enter> to confirm..."',
+    'rm -rf *-%s'%(relax_folder),
+    'rm -rf *-%s'%(ssc_folder),
+    'rm -rf *-%s'%(band_folder),
+    'rm -rf *-%s'%(dos_folder),
+    'rm -rf %s'%(result_folder),
+    'rm     POSCAR.*',
+    'rm     %s.o*'%(task_name),
+    'rm     slurm-*.out',
+    'rm     %s'%(mpi_machinefile),
+    'rm     vasp_submit.*.sh',
+    'rm     vr.allpara.json',
+    'rm     _KILLJOB.sh',
+    'rm     _CLEAN.sh '
+  ]
   with open("_CLEAN.sh", 'w') as fwp:
-    fwp.write(clean_folder)
+    for line in clean_folder:
+      fwp.write(line + '\n')
   os.system("chmod 740 _KILLJOB.sh _CLEAN.sh")
   print("[done] _KILLJOB.sh _CLEAN.sh")
   return 0
@@ -501,7 +518,7 @@ def welcome_interface():
   print("+----------------------------+")
   print("[tips] Please double check the vasprun(.py) are in the vasprun path.")
   print("[tips] Please make sure you are using vaspkit-1.12 ...")
-  _ = input('[input] Press <Enter> to confirm...')
+  _ = input('Press <Enter> to start the vasprun process... ')
   return 0
 
 

@@ -88,7 +88,7 @@ def main(argv):
     if '#' in line:
       continue
     line = line.replace('\n','')
-    dos_data_line = list(filter(None, line.split(' ')))
+    dos_data_line = line.split()
     energys.append(float(dos_data_line[0]))
     if spin_num == 1:
       doss.append(float(dos_data_line[1]))

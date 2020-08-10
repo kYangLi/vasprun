@@ -53,8 +53,19 @@ def paras_read_and_write(lib_obj_list):
   # Loop for each lib obj 
   for lib_obj in lib_obj_list:
     print("")
+    print("-------------------------------------------------------------------")
     print("[do] Under benchmark object: %s" %lib_obj)
     os.chdir(lib_obj)
+    # Check if all ITEMS:
+    for file in ['INCAR', 'KPOINTS']:
+      for task in ['RELAX', 'SSC', 'BAND', 'DOS']:
+        task_file = file + '.' + task
+        if not os.path.isfile(task_file):
+          print("[error] File %s not found..."%task_file)
+          print("[error] The benchmark need to calculate all of the task,")
+          print("        which including: RELAX, SSC, BAND, and DOS.")
+          print("[error] Please make sure ALL of the s are in lib folder.")
+          sys.exit(1)
     # Determine the expc_total_cores
     default_etcs = 20
     if os.path.isfile('vr.expc_total_cores.json'):
@@ -86,7 +97,7 @@ def paras_read_and_write(lib_obj_list):
       default_pew = default_paras.get("plot_energy_window")
     else:
       default_pbs_walltime = 48
-      default_pew = [-6, 6]
+      default_pew = [-6.0, 6.0]
     # Determine the pbs wall time
     if env_para_list["sys_type"] == 'pbs':
       print("[input] Please input PBS walltime for this object. [ %d ]" 
@@ -101,20 +112,20 @@ def paras_read_and_write(lib_obj_list):
         sys.exit(1)
       print("[para] Set PBS walltime to %d" %pbs_walltime)
     # Determine the plot energy window 
-    print("[input] Please input the plot energy window. [ %d %d ]" 
+    print("[input] Please input the plot energy window. [ %d, %d ]" 
           %(default_pew[0], default_pew[1]))
     pew = input('> ')
     if pew.replace(' ','') == '':
       pew = default_pew
     else:
-      pew = list(filter(None, pew.split(' ')))[:2]
+      pew = pew.split()[:2]
       pew = [float(val) for val in pew]
     if pew[0] >= pew[1]:
       print('[error] The lower limit must be samller than the upper...')
       sys.exit(1)
     print("[para] Set plot window to [%f, %f]" %(pew[0], pew[1]))
     # Determine the task list 
-    print("[para] Set plot window to 'TTTT' ")
+    print("[para] Set task list to 'TTTT' ")
     # Write paras into the lib vr.input.json
     calc_para_list = {}
     for env_para_name in env_para_name_list:
@@ -124,7 +135,7 @@ def paras_read_and_write(lib_obj_list):
     calc_para_list["plot_energy_window"] = pew
     calc_para_list["task_list"] = 'TTTT'
     with open('vr.input.json', 'w') as jfwp:
-      json.dump(calc_para_list, jfwp, indent=1)
+      json.dump(calc_para_list, jfwp, indent=2)
     os.chdir('../../..')
   return 0 
 
@@ -141,11 +152,12 @@ def submit_jobs(lib_obj_list):
     nodes_quantity = calc_para_list["nodes_quantity"]
     cores_per_node = calc_para_list["cores_per_node"]
     total_cores = nodes_quantity * cores_per_node
-    print("[submit] BM :: %-30s :: Nodes %3d  Cores %5d" %(lib_obj,
+    print("[submit] BM :: %-60s :: Nodes %3d  Cores %5d" %(lib_obj,
                                                            nodes_quantity, 
                                                            total_cores))
-    command = '(echo; echo benchmark; echo; echo; echo; \
-                echo; echo; echo; echo) | %s > /dev/null' %vasprun
+    task_name = os.path.split(lib_obj)[-1]
+    command = '(echo; echo bm.%s; echo; echo; echo; \
+                echo; echo; echo; echo) | %s > /dev/null' %(task_name, vasprun)
     _ = os.system(command)
     os.chdir('../../..')
   return 0 
@@ -160,7 +172,8 @@ def post_process(lib_obj_list):
     with open(kill_job_script) as frp:
       lines = frp.readlines()
     for line in lines:
-      if ('#' in line) or (line.replace(' ','') == '\n'):
+      line = line.replace('\n','')
+      if ('#' in line) or (line.replace(' ','') == ''):
         continue
       kill_jobs.append(line)
   with open('_BM-KILLJOBS.sh', 'w') as fwp:
@@ -205,7 +218,9 @@ def post_process(lib_obj_list):
     simplify_file.append('cd %s' %lib_obj)
     simplify_file.append('mkdir .tmp')
     simplify_file.append('mv %s .tmp/' %result_folder)
+    simplify_file.append('mv vr.input.json .tmp/')
     simplify_file.append('mv vr.allpara.json .tmp/')
+    simplify_file.append('mv vr.expc_total_cores.json .tmp/')
     simplify_file.append('mv vasp_submit.nscc.sh .tmp/')
     simplify_file.append('( echo ) | ./_CLEAN.sh')
     simplify_file.append('mv .tmp/* .')

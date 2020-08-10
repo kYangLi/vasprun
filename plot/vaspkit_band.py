@@ -78,11 +78,12 @@ def main(argv):
     if valid_line == []:
       continue
     line = line.replace('\n','')
-    line = line.replace('GAMMA',u"\u0393")
+    line = line.replace('GAMMA',u"\u0393") 
     line = line.replace('Gamma',u"\u0393")
     line = line.replace('gamma',u"\u0393")
+    line = line.replace('G',u"\u0393")
     line = line.replace('g',u"\u0393")
-    hsk_line = list(filter(None, line.split(' ')))
+    hsk_line = line.split()
     hsk_symbol_list.append(hsk_line[0])
     hsk_corrdinate_list.append(float(hsk_line[1]))
   ## Band Quantity & Band Data
@@ -92,7 +93,7 @@ def main(argv):
   for line in lines:
     if '# Band-Index' in line:
       line = line.replace('\n', '')
-      band_quantity = int(list(filter(None, line.split(' ')))[2])
+      band_quantity = int(line.split()[2])
   # Kpoints quantity
   curr_line_index = 0
   kpoints_quantity = 0
@@ -113,7 +114,7 @@ def main(argv):
   for index in range(k_start_line, k_end_line + 1):
     line = lines[index-1]
     k_index = index - k_start_line
-    kline_coors[k_index] = float(list(filter(None, line.split(' ')))[0])
+    kline_coors[k_index] = float(line.split()[0])
   # Band data
   if spin_num == 1:
     band_energys = \
@@ -128,7 +129,7 @@ def main(argv):
     if ('#' in line) or (line.replace('\n','').replace(' ','') == ''):
       continue
     line = line.replace('\n','')
-    band_data_line = list(filter(None, line.split(' ')))
+    band_data_line = line.split()
     band_index = energy_index // kpoints_quantity
     kpoint_index = energy_index % kpoints_quantity
     if band_index % 2 == 1:

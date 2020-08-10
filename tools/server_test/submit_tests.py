@@ -73,6 +73,16 @@ def paras_read_and_write(calc_obj_list):
   # Determine the nodes quantity
   for calc_obj in calc_obj_list:
     os.chdir(calc_obj)
+    # Check if all ITEMS:
+    for file in ['INCAR', 'KPOINTS']:
+      for task in ['RELAX', 'SSC', 'BAND', 'DOS']:
+        task_file = file + '.' + task
+        if not os.path.isfile(task_file):
+          print("[error] File %s not found..."%task_file)
+          print("[error] The benchmark need to calculate all of the task...")
+          print("[error] Which including: RELAX, SSC, BAND, and DOS.")
+          print("[error] Please make sure ALL of the s are in lib folder.")
+          sys.exit(1)
     # Check if the calc has run the benchmark...
     if (not os.path.isfile('vr.input.json')) or \
        (not os.path.isfile('vr.expc_total_cores.json')):
@@ -98,7 +108,7 @@ def paras_read_and_write(calc_obj_list):
       calc_para_list[env_para_name] = env_para_list[env_para_name]
     calc_para_list["nodes_quantity"] = nodes_quantity
     with open('vr.input.json', 'w') as jfwp:
-      json.dump(calc_para_list, jfwp, indent=1)
+      json.dump(calc_para_list, jfwp, indent=2)
     os.chdir('../..')
   return 0 
 
@@ -117,8 +127,9 @@ def submit_jobs(calc_obj_list):
     total_cores = nodes_quantity * cores_per_node
     print("[submit] %-30s :: Nodes %3d   Cores %4d" 
           %(calc_obj, nodes_quantity, total_cores))
-    command = '(echo; echo sys-test; echo; echo; echo; \
-                echo; echo; echo; echo) | %s > /dev/null' %vasprun
+    task_name = os.path.split(calc_obj)[-1]
+    command = '(echo; echo st.%s; echo; echo; echo; \
+                echo; echo; echo; echo) | %s > /dev/null' %(task_name, vasprun)
     _ = os.system(command)
     os.chdir('../..')
   return 0 
@@ -133,7 +144,8 @@ def post_process(calc_obj_list):
     with open(kill_job_script) as frp:
       lines = frp.readlines()
     for line in lines:
-      if ('#' in line) or (line.replace(' ','') == '\n'):
+      line = line.replace('\n','')
+      if ('#' in line) or (line.replace(' ','') == ''):
         continue
       kill_jobs.append(line)
   with open('_ST-KILLJOBS.sh', 'w') as fwp:

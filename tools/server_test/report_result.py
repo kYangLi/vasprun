@@ -55,21 +55,15 @@ def get_bandgap_info(file):
   homo_index = grep('HOMO Band', file)
   if homo_index == []:
     return False
-  homo_index = homo_index[0]
-  homo_index = list(filter(None, homo_index.split(' ')))
-  homo_index = int(homo_index[-1])
+  homo_index = int(homo_index[0].split()[-1])
   bandgap_info["homo_index"] = homo_index
   # Get band gap
   band_gap = grep('Band Gap', file)
-  band_gap = band_gap[0]
-  band_gap = list(filter(None, band_gap.split(' ')))
-  band_gap = float(band_gap[-1])
+  band_gap = float(band_gap[0].split()[-1])
   bandgap_info["band_gap"] = band_gap
   # Get VBM
   vbm = grep('Eigenvalue of VBM', file)
-  vbm = vbm[0]
-  vbm = list(filter(None, vbm.split(' ')))
-  vbm = float(vbm[-1])
+  vbm = float(vbm[0].split()[-1])
   bandgap_info["vbm"] = vbm
   return bandgap_info
 
@@ -424,7 +418,7 @@ def plot_compare_dos(calc_objs_infos, calc_obj_list):
 def report_with_json(calc_objs_infos):
   os.chdir("report")
   with open('report.json', 'w') as jfwp:
-    json.dump(calc_objs_infos, jfwp, indent=1)
+    json.dump(calc_objs_infos, jfwp, indent=2)
   os.chdir("..")
   return 0
 
@@ -631,7 +625,7 @@ def report_with_txt(calc_objs_infos, calc_obj_list):
     curr_obj_report_txt = [
     '[Object %d] %s' %(obj_index, obj),
     '==============================================================================',
-    ' Items.          ||        lib        |       calc.       |       diff.       ',
+    ' Items.          ||     benchmark     |   current vasp    |       diff.       ',
     '-----------------++-------------------+-------------------+-------------------',
     ' CPUs    | Nodes || %17s | %17s | %17s '%(lib_cpu_nodes, calc_cpu_nodes, com_cpu_nodes),
     '         | Cores || %17s | %17s | %17s '%(lib_cpu_cores, calc_cpu_cores, com_cpu_cores),
@@ -730,7 +724,7 @@ def report_with_pdflatex(calc_objs_infos, calc_obj_list):
     '  \\begin{tabular}{l|l||rrr}',
     '    \\hline',
     '    \\hline',
-    '    \\multicolumn{2}{l||}{Items} & lib & calc. & diff.\\\\',
+    '    \\multicolumn{2}{l||}{Items} & benchmark & current vasp & diff.\\\\',
     '    \\hline',
     '    \\multirow{2}{*}{CPUs} & Nodes & %10s & %10s & %10s\\\\'%(lib_cpu_nodes, calc_cpu_nodes, com_cpu_nodes),
     '                           & Cores & %10s & %10s & %10s\\\\'%(lib_cpu_cores, calc_cpu_cores, com_cpu_cores),
