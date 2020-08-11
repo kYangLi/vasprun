@@ -70,7 +70,9 @@ def read_parameters():
   # Task Name
   print("[do] Read in the task name...")
   curr_dirname = os.path.split(os.getcwd())[-1]
-  default_task_name = curr_dirname
+  default_task_name = calc_para_list["task_name"]
+  if not default_task_name:
+    default_task_name = curr_dirname
   print("[input] Please input the task name. [ %s ]" %default_task_name)
   task_name = input('> ')
   if task_name.replace(' ','') == '':
