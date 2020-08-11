@@ -93,6 +93,9 @@ def paras_read_and_write(calc_obj_list):
         os.mkdir('_trash')
       _ = os.system('mv %s _trash/' %calc_obj)
       continue
+    # Determine the task name
+    task_name = 'st.' + os.path.split(calc_obj)[-1]
+    # Determin the nodes quantity
     with open('vr.expc_total_cores.json') as jfrp:
       expc_total_cores = json.load(jfrp)
       expc_total_cores = expc_total_cores["expc_total_cores"]
@@ -107,6 +110,7 @@ def paras_read_and_write(calc_obj_list):
     for env_para_name in env_para_name_list:
       calc_para_list[env_para_name] = env_para_list[env_para_name]
     calc_para_list["nodes_quantity"] = nodes_quantity
+    calc_para_list["task_name"] = task_name
     with open('vr.input.json', 'w') as jfwp:
       json.dump(calc_para_list, jfwp, indent=2)
     os.chdir('../..')
@@ -125,11 +129,10 @@ def submit_jobs(calc_obj_list):
     nodes_quantity = calc_para_list["nodes_quantity"]
     cores_per_node = calc_para_list["cores_per_node"]
     total_cores = nodes_quantity * cores_per_node
-    print("[submit] %-30s :: Nodes %3d   Cores %4d" 
+    print("[submit] ST :: %-60s :: Nodes %3d   Cores %4d" 
           %(calc_obj, nodes_quantity, total_cores))
-    task_name = os.path.split(calc_obj)[-1]
-    command = '(echo; echo st.%s; echo; echo; echo; \
-                echo; echo; echo; echo) | %s > /dev/null' %(task_name, vasprun)
+    command = '(echo; echo; echo; echo; echo; echo; echo; echo; echo) \
+               | %s > /dev/null' %(vasprun)
     _ = os.system(command)
     os.chdir('../..')
   return 0 
@@ -138,7 +141,7 @@ def submit_jobs(calc_obj_list):
 def post_process(calc_obj_list):
   # Copy job kill file
   print("[do] Create the JOB KILL script...")
-  kill_jobs = ['#!/bin/bash',]
+  kill_jobs = ['#!/bin/bash','#','']
   for calc_obj in calc_obj_list:
     kill_job_script = os.path.join(calc_obj, '_KILLJOB.sh')
     with open(kill_job_script) as frp:
@@ -155,12 +158,14 @@ def post_process(calc_obj_list):
   # Create clean file
   print("[do] Create the FILE CLEAN script...")
   clean_file = [
-  '#!/bin/bash             ',
-  'rm -rf calc             ',
-  'rm -rf _trash           ',
+  '#!/bin/bash',
+  '#',
+  '',
+  'rm -rf calc',
+  'rm -rf _trash',
   'rm     vasprun_path.json',
-  'rm     _ST-KILLJOBS.sh  ',
-  'rm     _ST-CLEAN.sh     ',
+  'rm     _ST-KILLJOBS.sh',
+  'rm     _ST-CLEAN.sh',
   ] 
   with open('_ST-CLEAN.sh','w') as fwp:
     for line in clean_file:  

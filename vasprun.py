@@ -106,7 +106,8 @@ def read_parameters():
     print("[input] Please input the intel module.")
     intel_module = input("> ")
     calc_para_list["intel_module"] = intel_module
-  command = "%s; echo ${MKLROOT}" %(calc_para_list["intel_module"])
+  command = "%s > /dev/null 2>&1; echo ${MKLROOT}"\
+            %(calc_para_list["intel_module"])
   mklroot = os.popen(command).read().replace('\n','')
   print("[para] Using the Intel module: %s" %intel_module)
   print("[para] Using the Intel MKL lib: %s" %(mklroot))
@@ -458,27 +459,21 @@ def post_process(job_id, calc_para_list, filename_list):
   mpi_machinefile = filename_list["mpi_machinefile"]
   task_name = calc_para_list["task_name"]
   # Kill job script
+  kill_job = ['#!/bin/bash','#','']
   if sys_type == 'pbs':
-    kill_job = [
-      '#!/bin/bash',
-      'qdel %s'%(job_id)
-    ]
+    kill_job.append('qdel %s'%(job_id))
   elif sys_type == 'slurm':
-    kill_job = [
-      '#!/bin/bash',
-      'scancel %s'%(job_id)
-    ]
+    kill_job.append('scancel %s'%(job_id))
   elif sys_type == 'nscc':
-    kill_job = [
-      '#!/bin/bash',
-      'yhcancel %s'%(job_id)
-    ]
+    kill_job.append('yhcancel %s'%(job_id))
   with open("_KILLJOB.sh", 'w') as fwp:
     for line in kill_job:
       fwp.write(line + '\n')
   # Clean script
   clean_folder = [
     '#!/bin/bash',
+    '#',
+    '',
     'read -p "Press <Enter> to confirm..."',
     'rm -rf *-%s'%(relax_folder),
     'rm -rf *-%s'%(ssc_folder),
