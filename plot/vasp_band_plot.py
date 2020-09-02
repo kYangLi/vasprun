@@ -46,7 +46,7 @@ def get_command_line_input():
                       help='The projected atoms.')
   parser.add_argument('-b', '--orbit', dest='project_orbit',
                       default='all', type=str,
-                      help='The plot projected orbitals, please check the PROCAR to get the label of each orbital.')
+                      help='The plot projected orbitals, please check the PROCAR to get the label of each orbital. Split the orbital by comma(",") without blank(" ").')
   parser.add_argument('-x', '--no-plot', dest='no_plot', action='store_const',
                       const=True, default=False,
                       help='Output JSON file only.')
@@ -128,6 +128,16 @@ def read_kpath_info(plot_args):
         continue
       if 'E-fermi' in line:
         fermi_energy = float(line.split()[2])
+      if 'ICHARG' in line:
+        icharge = line.split()[2]
+        if icharge == '11':
+          print("[warning] You are using the OUTCAR of the BAND step, which fermi energy may not correct... Change it to the OUTCAR of SSC step if possible.")
+          print("[do] Ignore this warning and continue plotting...")
+      if 'LNONCOLLINEAR' in line:
+        if 'T' == line.split()[2]:
+          is_cl = False
+        else:
+          is_cl = True
   # Check the validation of spin_num
   if spin_num not in [1, 2]:
     print('[error] Spin Number Must be 1 or 2!!!')
@@ -138,33 +148,35 @@ def read_kpath_info(plot_args):
     lines = frp.readlines()
   kpoints_quantity_each_kpath = int(lines[1].split()[0])
   hsk_quantity = 0 # High Symmetic Kpoint quantity
-  for line in lines:
-    if re.search(r'[0-9]\.[0-9]', line):
+  for line in lines[1:]:
+    curr_line_ele_num = len(line.replace('\n','').split())
+    if re.search('[0-9]', line) and \
+       (curr_line_ele_num == 3 or curr_line_ele_num == 4):
       hsk_quantity += 1
   kpath_quantity = hsk_quantity // 2
   kpoints_quantity = kpoints_quantity_each_kpath * kpath_quantity
-  kpath_symbol_list = [['NULL', 'NULL'] for path in range(kpath_quantity)]
+  kpath_symbol_list = [['#', '#'] for path in range(kpath_quantity)]
   kpath_vector_list = [[[], []] for path in range(kpath_quantity)]
   hsk_index = -1 # High Symmetic Kpoint index
   for line in lines:
-    if re.search(r'[0-9]\.[0-9]', line):
+    curr_line_ele_num = len(line.replace('\n','').split())
+    if re.search('[0-9]', line) and \
+       (curr_line_ele_num == 3 or curr_line_ele_num == 4):
+      line = line.replace('!',' ').replace('#',' ')
       line = line.split()
       hsk_index += 1
       hsk_pair_index = hsk_index % 2
       kpath_index = hsk_index // 2
       kpath_vector_list[kpath_index][hsk_pair_index] = \
         [float(line[0]), float(line[1]), float(line[2])]
-      kpath_symbol_list[kpath_index][hsk_pair_index] = line[3]
+      if len(line) == 4:
+        kpath_symbol_list[kpath_index][hsk_pair_index] = line[3]
   ## Plot kpath symbol
-  # Special Symbol List
-  greek_symbol_list = ['Gamma','Delta','Theta','Lambda','Xi',
-                       'Pi','Sigma','Phi','Psi','Omega']
   # Prepare the symbol of k-axis (xtics)
   hsk_symbol_list = ['' for kpath_index in range(kpath_quantity+1)]
   hsk_symbol_list[0] = kpath_symbol_list[0][0]
   for kpath_index in range(1, kpath_quantity):
-    if kpath_symbol_list[kpath_index][0] == \
-      kpath_symbol_list[kpath_index-1][1]:
+    if kpath_symbol_list[kpath_index][0] == kpath_symbol_list[kpath_index-1][1]:
       hsk_symbol_list[kpath_index] = kpath_symbol_list[kpath_index][0]
     else:
       hsk_symbol_list[kpath_index] = kpath_symbol_list[kpath_index-1][1] + \
@@ -173,11 +185,11 @@ def read_kpath_info(plot_args):
   plot_hsk_symbol_list = []
   for symbol in hsk_symbol_list:
     symbol = symbol.replace("\\", "")
-    for greek_symbol in greek_symbol_list:
-      latex_greek_symbol = "$\\" + greek_symbol + "$"
-      symbol = re.sub(greek_symbol, "orz", symbol, flags=re.I)
-      symbol = symbol.replace("orz", latex_greek_symbol)
-    symbol = re.sub(r'_\d+', lambda x:'$'+x[0]+'$', symbol)
+    symbol = symbol.replace('GAMMA',u"\u0393") 
+    symbol = symbol.replace('Gamma',u"\u0393")
+    symbol = symbol.replace('gamma',u"\u0393")
+    symbol = symbol.replace('G',u"\u0393")
+    symbol = symbol.replace('g',u"\u0393")
     plot_hsk_symbol_list.append(symbol)
   # Kpoints index 
   min_kp_index = plot_args["min_kp_index"]
@@ -199,7 +211,8 @@ def read_kpath_info(plot_args):
              "plot_hsk_symbol_list" : plot_hsk_symbol_list,
              "kpath_vector_list"    : kpath_vector_list,
              "beg_ki"               : beg_ki,
-             "end_ki"               : end_ki}
+             "end_ki"               : end_ki,
+             "is_cl"                : is_cl}
   return kp_data
 
 
@@ -275,18 +288,8 @@ def read_tband(kp_data):
     for band_index in range(band_quantity):
       line = lines[read_line_index].split()
       spin_up_band[band_index, kpoints_index] = float(line[1]) - fermi_energy
-      if len(line) == 3: # ISPIN == 1
-        if spin_num != 1:
-          print("[error] ISPIN do not agree with EIGENVAL!!!")
-          sys.exit(2)
-      elif len(line) == 5: # ISPIN == 2
-        if spin_num != 2:
-          print("[error] ISPIN do not agree with EIGENVAL!!!")
-          sys.exit(2)
+      if spin_num == 2: 
         spin_dn_band[band_index, kpoints_index] = float(line[2]) - fermi_energy
-      else:
-        print('[error] EIGENVAL data format error!!!')
-        sys.exit(2)
       read_line_index += 1 # Read next band line
     read_line_index += 1 # Skip the blank line
   # Combine the band
@@ -378,6 +381,11 @@ def read_pband_data(plot_args, kp_data, project_atoms):
   spin_num = kp_data['spin_num']
   k_init_block_size = 3
   k_band_block_size = 3 + ions_quantity + 2
+  if kp_data["is_cl"]:
+    dirc_num = 1
+  else:
+    dirc_num = 4
+  total_kbb_size = k_band_block_size * dirc_num
   k_block_size = k_init_block_size + band_quantity * k_band_block_size
   spin_block_size = k_block_size * kpoints_quantity + 1
   file_size = spin_block_size * spin_num + 1
@@ -406,7 +414,7 @@ def read_pband_data(plot_args, kp_data, project_atoms):
         orb_weight = 0
         for atom_order in project_atoms:
           line_index = 1 + kpoint_index * k_block_size + k_init_block_size + \
-                       k_band_block_size * band_index + 3 + atom_order
+                       total_kbb_size * band_index + 3 + atom_order
           line = lines[line_index].replace('\n','').split()
           orb_weight += float(line[proj_index])
         orbit = orbits[proj_index]
