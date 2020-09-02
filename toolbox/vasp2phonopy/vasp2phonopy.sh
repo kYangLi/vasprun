@@ -10,8 +10,8 @@ if [ -z "${VASPRUN}" ]; then
 fi
 
 ## Check phonopy exec
-declare -r PHONOPY='$(echo $(which phonopy 2>/dev/null | tail -1))'
-if [ -z "${VASPRUN}" ]; then
+declare -r PHONOPY="$(echo $(which phonopy 2>/dev/null | tail -1))"
+if [ -z "${PHONOPY}" ]; then
   echo "[error] No program point to command 'phonopy'!"
   echo "[tips] Please add phonopy to the 'PATH' ..."
   exit 1
@@ -32,9 +32,11 @@ EOF
 chmod 740 _CLEAN.sh
 
 ## Generate the supercell
+echo "[do] Generate the suppercell..."
 ${PHONOPY} -d phonopy.conf
 
 ## Calculate each structure
+echo "[do] Submit the calculation task..."
 vasprun_list=''
 for poscar in POSCAR-*; do
   ((task_counter++)) 
@@ -44,8 +46,9 @@ for poscar in POSCAR-*; do
   cp ../INCAR INCAR.SSC 
   cp ../KPOINTS KPOINTS.SSC
   ln -s ../POTCAR POTCAR
+  cp ../vr.input.json .
   # Submit the Job
   ${VASPRUN}
-  vasprun_list="${vasprun_list} ${poscar}/vasprun.xml"
+  cp vr.input.json ../
   cd ..
 done 

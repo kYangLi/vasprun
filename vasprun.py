@@ -41,7 +41,7 @@ def read_parameters():
   print("|     Parameters Read in     |")
   print("+----------------------------+")
   ## Init Parameters lists
-  filename_list = {"mpi_machinefile" : 'machinefile',
+  filename_list = {"mpi_machinefile" : 'cores_list',
                    "relax_folder"    : 'RELAX',
                    "ssc_folder"      : 'SSC',
                    "band_folder"     : 'BAND',
@@ -50,8 +50,8 @@ def read_parameters():
                    "band_res_folder" : 'band',
                    "dos_res_folder"  : 'dos',
                    "result_json"     : 'result.json',
-                   "vasp_log"        : 'vasp.log',
-                   "vaspkit_log"     : 'vaspkit.log',
+                   "vasp_log"        : 'VASP.log',
+                   "vaspkit_log"     : 'VASPKIT.log',
                    "band_fig"        : 'band',
                    "dos_fig"         : 'dos'}
   vasprun_path = os.path.realpath(sys.argv[0])

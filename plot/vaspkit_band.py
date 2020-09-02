@@ -202,7 +202,7 @@ def main(argv):
   plt.hlines(0.0, x_min, x_max, colors="black",
              linestyles="dashed", linewidth=0.7, zorder=3)
   # Grid 
-  plt.grid(linestyle='--', axis="y", linewidth=0.5)
+  # plt.grid(linestyle='--', axis="y", linewidth=0.5)
   # Plot the Band Structure
   if spin_num == 1:
     for band in band_energys:

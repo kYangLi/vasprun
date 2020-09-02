@@ -63,11 +63,16 @@ def mpirun(filename_list, calc_para_list, vasp):
                                              total_cores_number,
                                              vasp,
                                              vasp_log)
+  start_time = time.time()
+  _ = os.system("date >> %s" %vasp_log)
   _ = os.system(intel_module + '; ' + command)
-  return 0
+  _ = os.system("date >> %s" %vasp_log)
+  end_time = time.time()
+  time_spend = end_time - start_time
+  return time_spend
 
 
-def res_collect(filename_list, calc_para_list, time_spend, task_tag):
+def res_collect(filename_list, time_spend, task_tag):
   # Prepare 
   result_folder = filename_list["result_folder"]
   result_folder = '../%s' %result_folder
@@ -140,19 +145,26 @@ def res_collect(filename_list, calc_para_list, time_spend, task_tag):
   res_record["total_mag"][task_tag] = total_mag
   with open(result_json, 'w') as jfwp:
     json.dump(res_record, jfwp, indent=2)
+  with open('RUN_TIME', 'w') as fwp:
+    fwp.write('%f\n' %time_spend)
   return 0
 
 
 def relax(filename_list, calc_para_list, task_index):
   relax_folder = filename_list["relax_folder"]
   relax_vasp = calc_para_list["relax_vasp"]
-  vasp_log = filename_list["vasp_log"]
   task_list = calc_para_list["task_list"]
   index_relax_folder = "%d-%s" %(task_index, relax_folder)
   if file_exist('-' + relax_folder):
     print("[info] Folder %s already exist, skip." %relax_folder)
     command = "mv *-%s %s" %(relax_folder, index_relax_folder)
     _ = os.system(command)
+    # Recollect the result 
+    os.chdir(index_relax_folder)
+    with open("RUN_TIME") as frp:
+      time_spend = float(frp.readlines()[0].replace('\n',''))
+    res_collect(filename_list, time_spend, 'relax')
+    os.chdir('..')
     task_index += 1
   elif task_list[0] != 'T':
     print("[info] Relax not include in the task list, abandon this step...")
@@ -166,16 +178,11 @@ def relax(filename_list, calc_para_list, task_index):
     _ = os.system('cp ../POSCAR .')
     _ = os.system('cp ../KPOINTS.RELAX KPOINTS')
     # Job Submit
-    start_time = time.time()
-    _ = os.system("date >> %s" %vasp_log)
-    mpirun(filename_list, calc_para_list, relax_vasp)
-    _ = os.system("date >> %s" %vasp_log)
-    end_time = time.time()
-    time_spend = end_time - start_time
+    time_spend = mpirun(filename_list, calc_para_list, relax_vasp)
     # Res. Collect
     _ = os.system("cp CONTCAR ../POSCAR.RELAXED")
     _ = os.system("cp CONTCAR ../POSCAR")
-    res_collect(filename_list, calc_para_list, time_spend, 'relax')
+    res_collect(filename_list, time_spend, 'relax')
     # Quit Dir.
     os.chdir('..')
     task_index += 1
@@ -185,19 +192,24 @@ def relax(filename_list, calc_para_list, task_index):
 def ssc(filename_list, calc_para_list, task_index):
   ssc_folder = filename_list["ssc_folder"]
   ssc_vasp = calc_para_list["ssc_vasp"]
-  vasp_log = filename_list["vasp_log"]
   task_list = calc_para_list["task_list"]
+  index_ssc_folder = "%d-%s" %(task_index, ssc_folder)
   if file_exist('-' + ssc_folder):
     print("[info] Folder %s already exist, skip." %ssc_folder)
-    command = "mv *-%s %d-%s" %(ssc_folder, task_index, ssc_folder)
+    command = "mv *-%s %s" %(ssc_folder, index_ssc_folder)
     _ = os.system(command)
+    # Recollect the result
+    os.chdir(index_ssc_folder)
+    with open("RUN_TIME") as frp:
+      time_spend = float(frp.readlines()[0].replace('\n',''))
+    res_collect(filename_list, time_spend, 'ssc')
+    os.chdir('..')
     task_index += 1
   elif task_list[1] != 'T':
     print("[info SSC not include in the task list, abandon this step...")
   else:
     print("[do] Calculate vasp ssc...")
     # File prepare
-    index_ssc_folder = "%d-%s" %(task_index, ssc_folder)
     os.mkdir(index_ssc_folder)
     os.chdir(index_ssc_folder)
     _ = os.system('cp ../INCAR.SSC INCAR')
@@ -205,14 +217,9 @@ def ssc(filename_list, calc_para_list, task_index):
     _ = os.system('cp ../POSCAR .')
     _ = os.system('cp ../KPOINTS.SSC KPOINTS')
     # Job Submit
-    start_time = time.time()
-    _ = os.system("date >> %s" %vasp_log)
-    mpirun(filename_list, calc_para_list, ssc_vasp)
-    _ = os.system("date >> %s" %vasp_log)
-    end_time = time.time()
-    time_spend = end_time - start_time
+    time_spend = mpirun(filename_list, calc_para_list, ssc_vasp)
     # Res. Collect
-    res_collect(filename_list, calc_para_list, time_spend, 'ssc')
+    res_collect(filename_list, time_spend, 'ssc')
     # Quit Dir.
     os.chdir('..')
     task_index += 1
@@ -272,7 +279,6 @@ def pbe_band(filename_list, calc_para_list, path_list, task_index):
   band_folder = filename_list["band_folder"]
   ssc_folder = filename_list["ssc_folder"]
   band_vasp = calc_para_list["ssc_vasp"]
-  vasp_log = filename_list["vasp_log"]
   index_band_folder = "%d-%s" %(task_index, band_folder)
   # File prepare
   os.mkdir(index_band_folder)
@@ -288,14 +294,9 @@ def pbe_band(filename_list, calc_para_list, path_list, task_index):
   _ = os.system('ln -s %s CHGCAR' %chgcar)
   _ = os.system('ln -s ../*-%s/DOSCAR DOSCAR.SSC' %ssc_folder)
   # Job Submit
-  start_time = time.time()
-  _ = os.system("date >> %s" %vasp_log)
-  mpirun(filename_list, calc_para_list, band_vasp)
-  _ = os.system("date >> %s" %vasp_log)
-  end_time = time.time()
-  time_spend = end_time - start_time
+  time_spend = mpirun(filename_list, calc_para_list, band_vasp)
   # Res. Collect
-  res_collect(filename_list, calc_para_list, time_spend, 'band')
+  res_collect(filename_list, time_spend, 'band')
   _ = os.system('mv DOSCAR DOSCAR.BAND')
   _ = os.system('mv DOSCAR.SSC DOSCAR')
   band_plot_collect(filename_list, calc_para_list, path_list, 'pbe')
@@ -380,7 +381,6 @@ def scan_band(filename_list, calc_para_list, path_list, task_index):
   band_folder = filename_list["band_folder"]
   ssc_folder = filename_list["ssc_folder"]
   band_vasp = calc_para_list["ssc_vasp"]
-  vasp_log = filename_list["vasp_log"]
   index_band_folder = "%d-%s" %(task_index, band_folder)
   # File prepare
   os.mkdir(index_band_folder)
@@ -403,14 +403,9 @@ def scan_band(filename_list, calc_para_list, path_list, task_index):
     sys.exit(1)
   _ = os.system('ln -s %s WAVECAR' %wavecar)
   # Job Submit
-  start_time = time.time()
-  _ = os.system("date >> %s" %vasp_log)
-  mpirun(filename_list, calc_para_list, band_vasp)
-  _ = os.system("date >> %s" %vasp_log)
-  end_time = time.time()
-  time_spend = end_time - start_time
+  time_spend = mpirun(filename_list, calc_para_list, band_vasp)
   # Res. Collect
-  res_collect(filename_list, calc_para_list, time_spend, 'band')
+  res_collect(filename_list, time_spend, 'band')
   band_plot_collect(filename_list, calc_para_list, path_list, 'scan')
   # Quit Dir.
   os.chdir('..')
@@ -422,17 +417,7 @@ def band(filename_list, calc_para_list, path_list, task_index):
   band_folder = filename_list["band_folder"]
   task_list = calc_para_list["task_list"]
   index_band_folder = "%d-%s" %(task_index, band_folder)
-  if file_exist('-' + band_folder):
-    print("[info] Folder %s already exist, skip." %band_folder)
-    command = "mv *-%s %s" %(band_folder, index_band_folder)
-    _ = os.system(command)
-    os.chdir(index_band_folder)
-    band_plot_collect(filename_list, calc_para_list, path_list, 'pbe')
-    os.chdir('..')
-    task_index += 1
-  elif task_list[2] != 'T':
-    print("[info] Band not include in the task list, abandon this step...")
-  else:
+  if os.path.isfile('INCAR.BAND'):
     band_mode = 'pbe'
     with open('INCAR.BAND') as frp:
       lines = frp.readlines()
@@ -442,6 +427,21 @@ def band(filename_list, calc_para_list, path_list, task_index):
       if ('METAGGA' in upl) and ('SCAN' in upl):
         band_mode = 'scan'
         break
+  if file_exist('-' + band_folder):
+    print("[info] Folder %s already exist, skip." %band_folder)
+    command = "mv *-%s %s" %(band_folder, index_band_folder)
+    _ = os.system(command)
+    # Recollect the result 
+    os.chdir(index_band_folder)
+    with open("RUN_TIME") as frp:
+      time_spend = float(frp.readlines()[0].replace('\n',''))
+    res_collect(filename_list, time_spend, 'band')
+    band_plot_collect(filename_list, calc_para_list, path_list, band_mode)
+    os.chdir('..')
+    task_index += 1
+  elif task_list[2] != 'T':
+    print("[info] Band not include in the task list, abandon this step...")
+  else:
     if band_mode == 'scan':
       print("[do] Calculate SCAN band ...")
       task_index = scan_band(filename_list, calc_para_list, 
@@ -497,7 +497,6 @@ def dos(filename_list, calc_para_list, path_list, task_index):
   dos_folder = filename_list["dos_folder"]
   ssc_folder = filename_list["ssc_folder"]
   dos_vasp = calc_para_list["ssc_vasp"]
-  vasp_log = filename_list["vasp_log"]
   task_list = calc_para_list["task_list"]
   index_dos_folder = "%d-%s" %(task_index, dos_folder)
   if file_exist('-' + dos_folder):
@@ -505,6 +504,9 @@ def dos(filename_list, calc_para_list, path_list, task_index):
     command = "mv *-%s %s" %(dos_folder, index_dos_folder)
     _ = os.system(command)
     os.chdir(index_dos_folder)
+    with open("RUN_TIME") as frp:
+      time_spend = float(frp.readlines()[0].replace('\n',''))
+    res_collect(filename_list, time_spend, 'dos')
     dos_plot_collect(filename_list, calc_para_list, path_list)
     os.chdir('..')
     task_index += 1
@@ -521,14 +523,9 @@ def dos(filename_list, calc_para_list, path_list, task_index):
     _ = os.system('cp ../KPOINTS.DOS KPOINTS')
     _ = os.system('ln -s ../*-%s/CHGCAR CHGCAR' %ssc_folder)
     # Job Submit
-    start_time = time.time()
-    _ = os.system("date >> %s" %vasp_log)
-    mpirun(filename_list, calc_para_list, dos_vasp)
-    _ = os.system("date >> %s" %vasp_log)
-    end_time = time.time()
-    time_spend = end_time - start_time
+    time_spend = mpirun(filename_list, calc_para_list, dos_vasp)
     # Res. Collect
-    res_collect(filename_list, calc_para_list, time_spend, 'dos')
+    res_collect(filename_list, time_spend, 'dos')
     dos_plot_collect(filename_list, calc_para_list, path_list)
     # Quit Dir.
     os.chdir('..')
@@ -549,6 +546,7 @@ def main():
   _ = task_index
   ## Post Process
   _ = os.system("mv POSCAR.INIT POSCAR")
+  print('[done]')
   return 0
 
 
