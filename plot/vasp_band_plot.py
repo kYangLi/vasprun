@@ -1,16 +1,22 @@
+#!/usr/bin/python3
+# Author: liyang@cmt.tsinghua
+# Date: 2020.09.02
+# Descripution: This script is designed for plot the projection band
+#                 of VASP calculation.
 import json
 import os
 import sys
+import re
 import argparse
 import math
 import numpy as np
-import re
+print("[do] Loading the matplotlib.pyplot...")
 import matplotlib.pyplot as plt
-import matplotlib 
 plt.switch_backend('agg') # For GUI less server
 
 
 def check_python_version():
+  """Check the python version"""
   curr_python_version = sys.version
   if curr_python_version[0] != '3':
     print('[error] Please use the python3 run this script...')
@@ -19,6 +25,7 @@ def check_python_version():
 
 
 def get_command_line_input():
+  """Read in the command line parameters"""
   parser = argparse.ArgumentParser("Basic VASP band plot parameters")
   parser.add_argument('-l', '--xmin-i', dest='min_kp_index', 
                       default=-1, type=int,
@@ -27,13 +34,13 @@ def get_command_line_input():
                       default=-1, type=int,
                       help='Band maximal kpoints index (begin from 1).')
   parser.add_argument('-d', '--ymin', dest='min_plot_energy', 
-                      default=-6, type=float,
+                      default=-3, type=float,
                       help='Minimal plot energy windows.')
   parser.add_argument('-u', '--ymax', dest='max_plot_energy', 
-                      default=6, type=float,
+                      default=3, type=float,
                       help='Maximal plot energy windows.')
   parser.add_argument('-f', '--format', dest='plot_format', 
-                      default='png', type=str, choices=['png', 'eps', 'pdf'],
+                      default='pdf', type=str, choices=['png', 'eps', 'pdf'],
                       help='Plot format.')
   parser.add_argument('-i', '--dpi', dest='plot_dpi', 
                       default=400, type=int,
@@ -42,10 +49,10 @@ def get_command_line_input():
                       default='band', type=str,
                       help='Output file name.')
   parser.add_argument('-p', '--project', dest='project_atoms', 
-                      default='', type=str,
+                      default='1', type=str,
                       help='The projected atoms.')
   parser.add_argument('-b', '--orbit', dest='project_orbit',
-                      default='all', type=str,
+                      default='dxy,dz2', type=str,
                       help='The plot projected orbitals, please check the PROCAR to get the label of each orbital. Split the orbital by comma(",") without blank(" ").')
   parser.add_argument('-x', '--no-plot', dest='no_plot', action='store_const',
                       const=True, default=False,
@@ -65,7 +72,7 @@ def get_command_line_input():
 
 
 def cal_k_distance(local_rlv, start_kpoint_frac, end_kpoint_frac):
-  # Calculate the distance of two different kpoints in k-space
+  """ Calculate the distance of two different kpoints in k-space"""
   # Reciprocal lattice vector but localy uesd :: local_rlv
   # Start kpoints in frac k-cooridnate :: start_kpoint
   # End kpoints in frac k-cooridnate :: end_kpoint
@@ -95,6 +102,7 @@ def cal_k_distance(local_rlv, start_kpoint_frac, end_kpoint_frac):
 
 
 def read_kpath_info(plot_args):
+  """Read in the kpath, fermi level, and spin number informations"""
   ## Check the existance of the KPOINTS and OUTCAR.
   if not os.path.isfile('KPOINTS'):
     print("[error] KPOINTS not found!!!")
@@ -131,8 +139,8 @@ def read_kpath_info(plot_args):
       if 'ICHARG' in line:
         icharge = line.split()[2]
         if icharge == '11':
-          print("[warning] You are using the OUTCAR of the BAND step, which fermi energy may not correct... Change it to the OUTCAR of SSC step if possible.")
-          print("[do] Ignore this warning and continue plotting...")
+          print("[warning] You are using the OUTCAR of the BAND step, ")
+          print("            which fermi energy may not correct...")
       if 'LNONCOLLINEAR' in line:
         if 'T' == line.split()[2]:
           is_cl = False
@@ -191,12 +199,12 @@ def read_kpath_info(plot_args):
     symbol = symbol.replace('G',u"\u0393")
     symbol = symbol.replace('g',u"\u0393")
     plot_hsk_symbol_list.append(symbol)
-  # Kpoints index 
+  # Kpoints index
   min_kp_index = plot_args["min_kp_index"]
   max_kp_index = plot_args["max_kp_index"]
   beg_ki = 0
   end_ki = kpoints_quantity - 1
-  if min_kp_index >= 0: 
+  if min_kp_index >= 0:
     beg_ki = min_kp_index
   if max_kp_index > 0:
     end_ki = max_kp_index
@@ -217,6 +225,7 @@ def read_kpath_info(plot_args):
 
 
 def get_kpoints_coors(kp_data, kpoints_vector_list):
+  """Calculate cooridinate of kpotions using rlv and fractional k points."""
   kpath_quantity = kp_data['kpath_quantity']
   rlv = kp_data['rlv']
   kpath_vector_list = kp_data['kpath_vector_list']
@@ -250,11 +259,12 @@ def get_kpoints_coors(kp_data, kpoints_vector_list):
 
 
 def read_tband(kp_data):
+  """Read the total band data"""
   ## Check the EIGENVAL file
   if not os.path.isfile('EIGENVAL'):
     print("[error] EIGENVAL not found!!!")
     sys.exit(0)
-  ## Initial the kpath data 
+  ## Initial the kpath data
   kpoints_quantity = kp_data["kpoints_quantity"]
   spin_num = kp_data["spin_num"]
   fermi_energy = kp_data['fermi_energy']
@@ -271,7 +281,7 @@ def read_tband(kp_data):
   # Read band data
   # Init. the band data matrix using numpy array
   spin_up_band = np.zeros((band_quantity, kpoints_quantity))
-  spin_dn_band = []
+  spin_dn_band = np.array([])
   if spin_num == 2:
     spin_dn_band = np.zeros((band_quantity, kpoints_quantity))
   kpoints_vector_list = [[] for kpoints in range(kpoints_quantity)]
@@ -294,7 +304,7 @@ def read_tband(kp_data):
     read_line_index += 1 # Skip the blank line
   # Combine the band
   band_data = [spin_up_band, spin_dn_band]
-  # Cut the kp list 
+  # Cut the kp list
   kpoints_vector_list = kpoints_vector_list[beg_ki:end_ki+1]
   # Get the kpoints coors
   hsk_corrdinate_list, kpoints_corrdinate_list = \
@@ -313,6 +323,7 @@ def read_tband(kp_data):
 
 
 def check_poscar():
+  """Check POSCAR and report the elements"""
   element_table = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na',
   'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 
   'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 
@@ -340,6 +351,7 @@ def check_poscar():
 
 
 def check_project_input(project_str):
+  """Refromal the projection strings"""
   poscar_elements, poscar_elements_num = check_poscar()
   project_str = project_str.replace('\n', '')
   project_str = project_str.replace(',', ' ')
@@ -355,9 +367,9 @@ def check_project_input(project_str):
       for atom_index in range(beg_index, end_index):
         project_atoms.append(atom_index+1)
   if project_str != []:
-    try: 
+    try:
       remain_atoms = [int(val) for val in project_str]
-    except:
+    except TypeError:
       print("[error] Please check the project atoms string...")
       sys.exit()
     project_atoms += remain_atoms
@@ -367,6 +379,7 @@ def check_project_input(project_str):
 
 
 def read_pband_data(plot_args, kp_data, project_atoms):
+  """Read the projection band data"""
   project_orbit_str = plot_args["project_orbit"]
   ## Check the PROCAR file
   if not os.path.isfile('PROCAR'):
@@ -380,13 +393,13 @@ def read_pband_data(plot_args, kp_data, project_atoms):
   ions_quantity = int(lines[1].split()[11])
   spin_num = kp_data['spin_num']
   k_init_block_size = 3
-  k_band_block_size = 3 + ions_quantity + 2
+  k_band_block_size =  ions_quantity + 1
   if kp_data["is_cl"]:
     dirc_num = 1
   else:
     dirc_num = 4
-  total_kbb_size = k_band_block_size * dirc_num
-  k_block_size = k_init_block_size + band_quantity * k_band_block_size
+  total_kbb_size = 3 + k_band_block_size * dirc_num + 1
+  k_block_size = k_init_block_size + band_quantity * total_kbb_size
   spin_block_size = k_block_size * kpoints_quantity + 1
   file_size = spin_block_size * spin_num + 1
   if len(lines) != file_size:
@@ -419,7 +432,7 @@ def read_pband_data(plot_args, kp_data, project_atoms):
           orb_weight += float(line[proj_index])
         orbit = orbits[proj_index]
         spin_up_pband_data[band_index][kpoint_index][orbit] = orb_weight
-        total_weight += orb_weight 
+        total_weight += orb_weight
       spin_up_pband_data[band_index][kpoint_index]['total'] = total_weight
   if spin_num == 2:
     spin_dn_pband_data = [\
@@ -433,7 +446,7 @@ def read_pband_data(plot_args, kp_data, project_atoms):
           for atom_order in project_atoms: 
             line_index = spin_block_size + \
                          1 + kpoint_index * k_block_size + k_init_block_size + \
-                         k_band_block_size * band_index + 3 + atom_order
+                         total_kbb_size * band_index + 3 + atom_order
             line = lines[line_index].replace('\n','').split()
             orb_weight += float(line[proj_index])
           orbit = orbits[proj_index]
@@ -457,6 +470,7 @@ def read_pband_data(plot_args, kp_data, project_atoms):
 
 
 def store_band(plot_args, kp_data, tband_data, pband_data):
+  """Store the band data to file"""
   plot_filename = plot_args["plot_filename"]
   json_filename = plot_filename + '.json'
   txt_filename = plot_filename + '.txt'
@@ -469,8 +483,8 @@ def store_band(plot_args, kp_data, tband_data, pband_data):
     data['kpath']['hsk_corrdinate_list'].tolist()
   data['kpath']['kpoints_corrdinate_list'] = \
     data['kpath']['kpoints_corrdinate_list'].tolist()
-  data['total_band']['energys'] = \
-    [val.tolist() for val in data['total_band']['energys']]
+  data['total_band']['energys'][0] = data['total_band']['energys'][0].tolist()
+  data['total_band']['energys'][1] = data['total_band']['energys'][1].tolist()
   with open(json_filename, 'w') as jfwp:
     json.dump(data, jfwp, indent=2)
   # Write the txt file 
@@ -522,13 +536,13 @@ def store_band(plot_args, kp_data, tband_data, pband_data):
           txt_strs.append(line + '\n')
         txt_strs.append('\n')
     elif spin_num == 2:
-      # Get the title 
+      # Get the title
       title = '# K-coors        Spin-up(eV)  '
       for orbit in orbits:
         title += '%8s    ' %orbit
       title += '   Spin-up(eV)  '
       for orbit in orbits:
-        title += '%8s    ' %orbit
+        title += '%6s    ' %orbit
       # Get the band contect
       for band_index in range(band_quantity):
         txt_strs.append(title + '\n')
@@ -544,10 +558,11 @@ def store_band(plot_args, kp_data, tband_data, pband_data):
         txt_strs.append('\n')
   with open(txt_filename, 'w') as fwp:
     fwp.writelines(txt_strs)
-  return 0 
+  return 0
 
 
 def plot_band(plot_args, kp_data, tband_data, pband_data):
+  """Plot the band"""
   min_plot_energy = plot_args["min_plot_energy"]
   max_plot_energy = plot_args["max_plot_energy"]
   plot_filename = plot_args['plot_filename']
@@ -610,7 +625,7 @@ def plot_band(plot_args, kp_data, tband_data, pband_data):
   if plot_args['project_atoms'] != '':
     for orbit_index in range(len(orbits)):
       orbit = orbits[orbit_index]
-      up_color = 2.11 ** ((orbit_index+1) * math.pi)
+      up_color = 0.36 ** ((orbit_index+1) * math.pi)
       up_color = '#' + up_color.hex().split('.')[1][0:6]
       band_plot.scatter([], [], s=10, c=up_color, label='up %s'%orbit)
       if spin_num == 2:
@@ -643,17 +658,27 @@ def plot_band(plot_args, kp_data, tband_data, pband_data):
 
 
 def main():
+  """Main function"""
   check_python_version()
   plot_args = get_command_line_input()
+  plot_filename = plot_args["plot_filename"]
+  plot_format = plot_args["plot_format"]
+  print("[do] Reading the kapth info...      <== (KPOINTS, OUTCAR)")
   kp_data = read_kpath_info(plot_args)
+  print("[do] Reading the total band...      <== (EIGENVAL)")
   kp_data, tband_data = read_tband(kp_data)
   if plot_args['project_atoms'] != '':
+    print("[do] Reading the projection band... <== (PROCAR, POSCAR)")
     project_atoms = check_project_input(plot_args['project_atoms'])
     pband_data = read_pband_data(plot_args, kp_data, project_atoms)
   else:
     pband_data = {"project_atoms":[], "project_orbit":[], "weight":[]}
+  print("[do] Recording the band data...     ==> (%s.json, %s.txt)" \
+        %(plot_filename, plot_filename))
   store_band(plot_args, kp_data, tband_data, pband_data)
   if not plot_args["no_plot"]:
+    print("[do] Plotting the band...           ==> (%s.%s)"\
+          %(plot_filename, plot_format))
     plot_band(plot_args, kp_data, tband_data, pband_data)
   return 0
 
