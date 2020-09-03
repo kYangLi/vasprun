@@ -164,7 +164,7 @@ def submit_jobs(lib_obj_list):
     print("[submit] BM :: %-60s :: Nodes %3d  Cores %5d" %(lib_obj,
                                                            nodes_quantity, 
                                                            total_cores))
-    command = '(echo; echo; echo; echo; echo; echo; echo; echo; echo) \
+    command = '(echo; echo; echo; echo; echo; echo; echo; echo; echo; echo) \
                | %s > /dev/null' %(vasprun)
     _ = os.system(command)
     os.chdir('../../..')

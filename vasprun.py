@@ -190,7 +190,7 @@ def read_parameters():
   print("")
   # Cores Per Nodes
   print("[do] Read in the number of cores per node...")
-  default_cores_per_node = calc_para_list.get("cores_per_node")
+  default_cores_per_node = calc_para_list.get("cores_per_node", 1)
   if (not isinstance(default_cores_per_node, int)) or \
      (default_cores_per_node <= 0):
      default_cores_per_node = 1
@@ -201,12 +201,34 @@ def read_parameters():
     cores_per_node = default_cores_per_node
   else:
     cores_per_node = int(cores_per_node)
-    if (not isinstance(cores_per_node, int)) or (cores_per_node <= 0):
+    if (cores_per_node <= 0):
       print('[error] Invalid nodes quantity...')
       sys.exit(1)
   calc_para_list["cores_per_node"] = cores_per_node
   print("[para] Set the number of cores per node: %d" %(cores_per_node))
   print("")
+  # VASP6 OMP cpus number
+  if sys_type == 'pbs':
+    print("[do] Read in the VASP6 PBS OMP cups number...")
+    default_vasp6_omp_cups = calc_para_list.get("vasp6_omp_cups", 1)
+    if (not isinstance(default_vasp6_omp_cups, int)) or \
+       (default_vasp6_omp_cups <= 0):
+      default_vasp6_omp_cups = 1
+    print("[input] Please input the number of vasp6 OMP cups. [ %d ]"
+          %(default_vasp6_omp_cups))
+    vasp6_omp_cups = input('> ')
+    if vasp6_omp_cups.replace(' ','') == '':
+      vasp6_omp_cups = default_vasp6_omp_cups
+    else:
+      vasp6_omp_cups = int(vasp6_omp_cups)
+    if (cores_per_node <= 0) or \
+      (cores_per_node//vasp6_omp_cups*vasp6_omp_cups != cores_per_node):
+      print('[error] Invalid omp cups number...')
+      print('[tips] The omp cups num must be a divisor of the cores per node.')
+      sys.exit(1)
+    calc_para_list["vasp6_omp_cups"] = vasp6_omp_cups
+    print("[para] Set the number of OMP cpus: %d" %(vasp6_omp_cups))
+    print("")
   # Nodes Quantity
   print("[do] Read in the nodes quantity...")
   default_nodes_quantity = calc_para_list.get("nodes_quantity")

@@ -51,11 +51,15 @@ def mpirun(filename_list, calc_para_list, vasp):
   total_cores_number = nodes_quantity * cores_per_node
   intel_module = calc_para_list["intel_module"]
   if sys_type == 'pbs':
+    # vasp6_omp_cups = calc_para_list["vasp6_omp_cups"]
     mpi_machinefile = filename_list["mpi_machinefile"]
-    command = "mpirun -machinefile ../%s -np %d %s >> %s" %(mpi_machinefile,
-                                                            total_cores_number,
-                                                            vasp,
-                                                            vasp_log)
+    # vasp_process_num = total_cores_number // vasp6_omp_cups
+    # command = "mpirun -bynode -cpus-per-proc %d -machinefile ../%s \
+    #            -np %d -x OMP_NUM_THREADS=%d %s >> %s" \
+    #            %(vasp6_omp_cups, mpi_machinefile, vasp_process_num,
+    #              vasp6_omp_cups, vasp, vasp_log)
+    command = "mpirun -machinefile ../%s  -np %d %s >> %s" \
+               %(mpi_machinefile, total_cores_number, vasp, vasp_log)
   elif sys_type == 'slurm':
     command = "srun %s >> %s" %(vasp, vasp_log)
   elif sys_type == 'nscc':

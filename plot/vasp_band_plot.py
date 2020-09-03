@@ -45,6 +45,9 @@ def get_command_line_input():
   parser.add_argument('-i', '--dpi', dest='plot_dpi', 
                       default=400, type=int,
                       help='Plot resolution (dpi).')
+  parser.add_argument('-s', '--point-size', dest='plot_point_size', 
+                      default=1.0, type=float,
+                      help='Plot resolution (dpi).')
   parser.add_argument('-o', '--output', dest='plot_filename', 
                       default='band', type=str,
                       help='Output file name.')
@@ -64,6 +67,7 @@ def get_command_line_input():
                "max_plot_energy" : args.max_plot_energy,
                "plot_format"     : args.plot_format,
                "plot_dpi"        : args.plot_dpi,
+               "plot_point_size" : args.plot_point_size,
                "plot_filename"   : args.plot_filename,
                "project_atoms"   : args.project_atoms,
                "project_orbit"   : args.project_orbit,
@@ -103,10 +107,7 @@ def cal_k_distance(local_rlv, start_kpoint_frac, end_kpoint_frac):
 
 def read_kpath_info(plot_args):
   """Read in the kpath, fermi level, and spin number informations"""
-  ## Check the existance of the KPOINTS and OUTCAR.
-  if not os.path.isfile('KPOINTS'):
-    print("[error] KPOINTS not found!!!")
-    sys.exit(0)
+  ## Check the existance of the OUTCAR.
   if not os.path.isfile('OUTCAR'):
     print("[error] OUTCAR not found!!!")
     sys.exit(0)
@@ -152,8 +153,26 @@ def read_kpath_info(plot_args):
     sys.exit(0)
   ## Kpoints Quantity Each Kpath, K Path Quantity, K Points Quantity
   ##   K Path Vec. & K Path Symbol
-  with open("KPOINTS") as frp:
-    lines = frp.readlines()
+  # Read in the kpoints file
+  kts_is_line_mode = False
+  khi_is_line_mode = False
+  if os.path.isfile('KPOINTS'):
+    with open("KPOINTS") as frp:
+      kts_lines = frp.readlines()
+      kts_is_line_mode = 'line' in kts_lines[2].lower()
+  if os.path.isfile('KPATH.in'):
+    with open("KPATH.in") as frp:
+      khi_lines = frp.readlines()
+      khi_is_line_mode = 'line' in khi_lines[2].lower()
+  if kts_is_line_mode:
+    lines = kts_lines
+  elif khi_is_line_mode:
+    print("[info] KPOINTS is not in line mode, using KPATH.in...")
+    lines = khi_is_line_mode
+  else:
+    print('[error] No line mode KPOINTS or KPATH.in was found...')
+    sys.exit(1)
+  # Read kpoints number
   kpoints_quantity_each_kpath = int(lines[1].split()[0])
   hsk_quantity = 0 # High Symmetic Kpoint quantity
   for line in lines[1:]:
@@ -162,7 +181,7 @@ def read_kpath_info(plot_args):
        (curr_line_ele_num == 3 or curr_line_ele_num == 4):
       hsk_quantity += 1
   kpath_quantity = hsk_quantity // 2
-  kpoints_quantity = kpoints_quantity_each_kpath * kpath_quantity
+  plot_kpoints_quantity = kpoints_quantity_each_kpath * kpath_quantity
   kpath_symbol_list = [['#', '#'] for path in range(kpath_quantity)]
   kpath_vector_list = [[[], []] for path in range(kpath_quantity)]
   hsk_index = -1 # High Symmetic Kpoint index
@@ -200,27 +219,19 @@ def read_kpath_info(plot_args):
     symbol = symbol.replace('g',u"\u0393")
     plot_hsk_symbol_list.append(symbol)
   # Kpoints index
-  min_kp_index = plot_args["min_kp_index"]
-  max_kp_index = plot_args["max_kp_index"]
-  beg_ki = 0
-  end_ki = kpoints_quantity - 1
-  if min_kp_index >= 0:
-    beg_ki = min_kp_index
-  if max_kp_index > 0:
-    end_ki = max_kp_index
+  
   ## Pack the parameters
-  kp_data = {"spin_num"             : spin_num,
-             "rlv"                  : rlv,
-             "fermi_energy"         : fermi_energy,
-             "hsk_quantity"         : hsk_quantity,
-             "kpath_quantity"       : kpath_quantity,
-             "kpoints_quantity"     : kpoints_quantity,
-             "kpath_symbol_list"    : kpath_symbol_list,
-             "plot_hsk_symbol_list" : plot_hsk_symbol_list,
-             "kpath_vector_list"    : kpath_vector_list,
-             "beg_ki"               : beg_ki,
-             "end_ki"               : end_ki,
-             "is_cl"                : is_cl}
+  kp_data = {"spin_num"                    : spin_num,
+             "rlv"                         : rlv,
+             "fermi_energy"                : fermi_energy,
+             "hsk_quantity"                : hsk_quantity,
+             "kpath_quantity"              : kpath_quantity,
+             "plot_kpoints_quantity"       : plot_kpoints_quantity,
+             "kpoints_quantity_each_kpath" : kpoints_quantity_each_kpath,
+             "kpath_symbol_list"           : kpath_symbol_list,
+             "plot_hsk_symbol_list"        : plot_hsk_symbol_list,
+             "kpath_vector_list"           : kpath_vector_list,
+             "is_cl"                       : is_cl}
   return kp_data
 
 
@@ -230,7 +241,8 @@ def get_kpoints_coors(kp_data, kpoints_vector_list):
   rlv = kp_data['rlv']
   kpath_vector_list = kp_data['kpath_vector_list']
   kpoints_quantity = kp_data['kpoints_quantity']
-  kpoints_quantity_each_kpath = kpoints_quantity // kpath_quantity
+  kpoints_quantity_each_kpath = kp_data['kpoints_quantity_each_kpath']
+  beg_ki = kp_data["beg_ki"]
   # Get the length of each k-path in k-space
   hsk_distance_list = [0.0 for kpath_index in range(kpath_quantity)]
   sum_hsk_distance_list = [0.0 for kpath_index in range(kpath_quantity)]
@@ -243,7 +255,7 @@ def get_kpoints_coors(kp_data, kpoints_vector_list):
   hsk_corrdinate_list = np.array(hsk_corrdinate_list)
   # Get the distance in k-space about a k-points on the k-path
   kpoints_corrdinate_list = np.zeros(kpoints_quantity)
-  kpoints_index = -1
+  kpoints_index = beg_ki - 1
   for kpath_index in range(kpath_quantity):
     # Count the Previous kpath distance
     pre_path_distance = hsk_corrdinate_list[kpath_index]
@@ -258,25 +270,36 @@ def get_kpoints_coors(kp_data, kpoints_vector_list):
   return hsk_corrdinate_list, kpoints_corrdinate_list
 
 
-def read_tband(kp_data):
+def read_tband(plot_args, kp_data):
   """Read the total band data"""
   ## Check the EIGENVAL file
   if not os.path.isfile('EIGENVAL'):
     print("[error] EIGENVAL not found!!!")
     sys.exit(0)
   ## Initial the kpath data
-  kpoints_quantity = kp_data["kpoints_quantity"]
+  plot_kpoints_quantity = kp_data["plot_kpoints_quantity"]
   spin_num = kp_data["spin_num"]
   fermi_energy = kp_data['fermi_energy']
-  beg_ki = kp_data["beg_ki"]
-  end_ki = kp_data["end_ki"]
-  ## Band Quantity & Band Data
+  ## Kpoints Quantity, Band Quantity & Band Data
   with open ("EIGENVAL") as frp:
     lines = frp.readlines()
-  check_kpoints_quantity = int(lines[5].split()[1])
-  if check_kpoints_quantity != kpoints_quantity:
+  kpoints_quantity = int(lines[5].split()[1])
+  # Read the plot kpoints index
+  min_kp_index = plot_args["min_kp_index"]
+  max_kp_index = plot_args["max_kp_index"]
+  beg_ki = 0
+  end_ki = kpoints_quantity - 1
+  if min_kp_index >= 0:
+    beg_ki = min_kp_index
+  if max_kp_index > 0:
+    end_ki = max_kp_index
+  if plot_kpoints_quantity != (end_ki - beg_ki + 1):
     print('[error] EIGENVAL kpoints quantity do not match with KPOINTS!!!')
     sys.exit(1)
+  kp_data["kpoints_quantity"] = kpoints_quantity
+  kp_data["beg_ki"] = beg_ki
+  kp_data["end_ki"] = end_ki
+  # Read band quantity
   band_quantity = int(lines[5].split()[2])
   # Read band data
   # Init. the band data matrix using numpy array
@@ -304,11 +327,11 @@ def read_tband(kp_data):
     read_line_index += 1 # Skip the blank line
   # Combine the band
   band_data = [spin_up_band, spin_dn_band]
-  # Cut the kp list
-  kpoints_vector_list = kpoints_vector_list[beg_ki:end_ki+1]
   # Get the kpoints coors
   hsk_corrdinate_list, kpoints_corrdinate_list = \
     get_kpoints_coors(kp_data, kpoints_vector_list)
+  # Cut the kp list
+  kpoints_corrdinate_list = kpoints_corrdinate_list[beg_ki:end_ki+1]
   # Cut the kpoints band
   band_data[0] = band_data[0][:, beg_ki:end_ki+1]
   if spin_num == 2:
@@ -492,7 +515,7 @@ def store_band(plot_args, kp_data, tband_data, pband_data):
   plot_hsk_symbol_list = kp_data["plot_hsk_symbol_list"]
   kpoints_corrdinate_list = kp_data["kpoints_corrdinate_list"]
   spin_num = kp_data["spin_num"]
-  kpoints_quantity = kp_data["kpoints_quantity"]
+  plot_kpoints_quantity = kp_data["plot_kpoints_quantity"]
   band_quantity = tband_data["band_quantity"]
   energys = tband_data["energys"]
   orbits = pband_data["project_orbit"]
@@ -507,7 +530,7 @@ def store_band(plot_args, kp_data, tband_data, pband_data):
     if spin_num == 1:
       for band_index in range(band_quantity):
         txt_strs.append('# K-coors        Spin-up(eV)\n')
-        for kpoint_index in range(kpoints_quantity):
+        for kpoint_index in range(plot_kpoints_quantity):
           txt_strs.append('  %.8f    %.8f\n' \
                           %(kpoints_corrdinate_list[kpoint_index],
                             energys[0][band_index][kpoint_index]))
@@ -515,7 +538,7 @@ def store_band(plot_args, kp_data, tband_data, pband_data):
     elif spin_num == 2:
       for band_index in range(band_quantity):
         txt_strs.append('# K-coors        Spin-up(eV)     Spin-dn(eV)\n')
-        for kpoint_index in range(kpoints_quantity):
+        for kpoint_index in range(plot_kpoints_quantity):
           txt_strs.append('  %.8f    %.8f    %.8f\n' \
                           %(kpoints_corrdinate_list[kpoint_index],
                             energys[0][band_index][kpoint_index],
@@ -528,7 +551,7 @@ def store_band(plot_args, kp_data, tband_data, pband_data):
         title += '%8s    ' %orbit
       for band_index in range(band_quantity):
         txt_strs.append(title + '\n')
-        for kpoint_index in range(kpoints_quantity):
+        for kpoint_index in range(plot_kpoints_quantity):
           line = '  %.8f    %.8f  '%(kpoints_corrdinate_list[kpoint_index],
                                    energys[0][band_index][kpoint_index])
           for orbit in orbits:
@@ -546,7 +569,7 @@ def store_band(plot_args, kp_data, tband_data, pband_data):
       # Get the band contect
       for band_index in range(band_quantity):
         txt_strs.append(title + '\n')
-        for kpoint_index in range(kpoints_quantity):
+        for kpoint_index in range(plot_kpoints_quantity):
           line = '  %.8f    %.8f  '%(kpoints_corrdinate_list[kpoint_index],
                                      energys[0][band_index][kpoint_index])
           for orbit in orbits:
@@ -568,10 +591,11 @@ def plot_band(plot_args, kp_data, tband_data, pband_data):
   plot_filename = plot_args['plot_filename']
   plot_dpi = plot_args['plot_dpi']
   plot_format = plot_args['plot_format']
+  plot_point_size = plot_args["plot_point_size"]
   hsk_corrdinate_list = kp_data["hsk_corrdinate_list"]
   plot_hsk_symbol_list = kp_data["plot_hsk_symbol_list"]
   kpath_quantity = kp_data["kpath_quantity"]
-  kpoints_quantity = kp_data["kpoints_quantity"]
+  plot_kpoints_quantity = kp_data["plot_kpoints_quantity"]
   kpoints_corrdinate_list = kp_data["kpoints_corrdinate_list"]
   spin_num = kp_data["spin_num"]
   band_quantity = tband_data["band_quantity"]
@@ -636,18 +660,18 @@ def plot_band(plot_args, kp_data, tband_data, pband_data):
         x = kpoints_corrdinate_list
         y = energys[0][band_index]
         area = []
-        for kpoint_index in range(kpoints_quantity):
+        for kpoint_index in range(plot_kpoints_quantity):
           w = weight[0][band_index][kpoint_index][orbit]
-          area.append(4 * math.pi * (w**2))
+          area.append(4 * math.pi * (w**2) * plot_point_size)
         band_plot.scatter(x, y, s=area, c=up_color)
       if spin_num == 2:
         for band_index in range(band_quantity):
           x = kpoints_corrdinate_list
           y = energys[1][band_index]
           area = []
-          for kpoint_index in range(kpoints_quantity):
+          for kpoint_index in range(plot_kpoints_quantity):
             w = weight[1][band_index][kpoint_index][orbit]
-            area.append(4 * math.pi * (w**2))
+            area.append(4 * math.pi * (w**2) * plot_point_size)
           band_plot.scatter(x, y, s=area, c=dn_color)
     plt.rcParams.update({'legend.handlelength':0.1})
     band_plot.legend(prop = {'size':8})
@@ -666,7 +690,7 @@ def main():
   print("[do] Reading the kapth info...      <== (KPOINTS, OUTCAR)")
   kp_data = read_kpath_info(plot_args)
   print("[do] Reading the total band...      <== (EIGENVAL)")
-  kp_data, tband_data = read_tband(kp_data)
+  kp_data, tband_data = read_tband(plot_args, kp_data)
   if plot_args['project_atoms'] != '':
     print("[do] Reading the projection band... <== (PROCAR, POSCAR)")
     project_atoms = check_project_input(plot_args['project_atoms'])
