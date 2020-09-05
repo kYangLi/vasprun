@@ -61,7 +61,7 @@ def read_parameters():
   path_list = {"vasprun_path" : vasprun_path,
                "python_exec"  : python_exec}
   calc_para_list = check_input_json(vasprun_path)
-  sys_type_list = ["pbs","slurm","nscc"]
+  sys_type_list = ["pbs","slurm","nscc", "direct"]
   ## Read from command line
   # Path list 
   print("[para] You are using python: %s" %python_exec)
@@ -208,7 +208,7 @@ def read_parameters():
   print("[para] Set the number of cores per node: %d" %(cores_per_node))
   print("")
   # VASP6 OMP cpus number
-  if sys_type == 'pbs':
+  if (sys_type == 'pbs') or (sys_type == 'direct'):
     print("[do] Read in the VASP6 PBS OMP cups number...")
     default_vasp6_omp_cups = calc_para_list.get("vasp6_omp_cups", 1)
     if (not isinstance(default_vasp6_omp_cups, int)) or \
@@ -456,6 +456,16 @@ def vasp_submit(filename_list, calc_para_list, path_list):
     with open('vasp_submit.nscc.sh', 'w') as fwp:
       fwp.write(script)
     command = 'yhbatch vasp_submit.nscc.sh'
+  elif sys_type == 'direct':
+    submit_file = "%s/submit/direct.sh" %vasprun_path
+    with open(submit_file) as frp:
+      script = frp.read()
+    script = script.replace('__task_name__', task_name)
+    script = script.replace('__python_exec__', python_exec)
+    script = script.replace('__vasp_calc_script__', vasp_calc_script)
+    with open('vasp_submit.direct.sh', 'w') as fwp:
+      fwp.write(script)
+    command = 'nohup bash vasp_submit.direct.sh > %s.out 2>&1 &' %task_name
   # Submit the script
   print("[done] vasp_submit.%s.sh" %sys_type)
   _ = input("Press <Enter> to confirm the submition...")

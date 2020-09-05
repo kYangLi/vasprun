@@ -59,7 +59,7 @@ def get_command_line_input():
                       help='The plot projected orbitals, please check the PROCAR to get the label of each orbital. Split the orbital by comma(",") without blank(" ").')
   parser.add_argument('-x', '--no-plot', dest='no_plot', action='store_const',
                       const=True, default=False,
-                      help='Output JSON file only.')
+                      help='Do not plot the band.')
   args = parser.parse_args()
   plot_args = {"min_kp_index"    : args.min_kp_index - 1,
                "max_kp_index"    : args.max_kp_index - 1,

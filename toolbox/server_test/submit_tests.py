@@ -5,7 +5,8 @@
 import os 
 import sys
 import json
-import time 
+import time
+import socket
 
 
 def env_check():
@@ -16,8 +17,8 @@ def env_check():
      (not os.path.isdir('lib/private')):
     print("[error] Calculation lib not found...")
     sys.exit(1)
-  if not os.path.isfile('vr.input.json'):
-    print("[error] No vr.input.json was found in test dir. ...")
+  if not os.path.isfile('vr.input.st.json'):
+    print("[error] No vr.input.st.json was found in test dir. ...")
     sys.exit(1)
   if os.path.isdir('calc'):
     _ = os.system("rm -rf calc")
@@ -61,17 +62,26 @@ def copy_file_to_calc():
 
 def paras_read_and_write(calc_obj_list):
   # Read in test parameters
-  with open('vr.input.json') as jfrp:
+  with open('vr.input.st.json') as jfrp:
     env_para_list = json.load(jfrp)
+  # Report the mechine hostname
+  env_para_list["hostname"] = socket.gethostname()
+  with open('vr.input.st.json', 'w') as jfwp:
+    json.dump(env_para_list, jfwp, indent=2)
+  # Define the env name
   env_para_name_list = ["intel_module", "relax_vasp", "ssc_vasp", 
                         "vaspkit", "sys_type", "cores_per_node", 
                         "pbs_queue"]
   for env_para_name in env_para_name_list:
     print("[para] Set %-14s   ::   %s" 
-          %(env_para_name, str(env_para_list[env_para_name])))
+          %(env_para_name, str(env_para_list.get(env_para_name, None))))
   print("[info] Exit this script to modify those parameters in vr.input.json .")
   # Determine the nodes quantity
   for calc_obj in calc_obj_list:
+    print("")
+    print("-------------------------------------------------------------------")
+    print("[do] Under test object: %s" %calc_obj)
+    print("-------------------------------------------------------------------")
     os.chdir(calc_obj)
     # Check if all ITEMS:
     for file in ['INCAR', 'KPOINTS']:
@@ -93,23 +103,60 @@ def paras_read_and_write(calc_obj_list):
         os.mkdir('_trash')
       _ = os.system('mv %s _trash/' %calc_obj)
       continue
+    # Read in the default paras
+    with open('vr.input.json') as jfrp:
+      calc_para_list = json.load(jfrp)
     # Determine the task name
     task_name = 'st.' + os.path.split(calc_obj)[-1]
     # Determin the nodes quantity
     with open('vr.expc_total_cores.json') as jfrp:
       expc_total_cores = json.load(jfrp)
       expc_total_cores = expc_total_cores["expc_total_cores"]
-    nodes_quantity = round(expc_total_cores / env_para_list["cores_per_node"])
-    if nodes_quantity <= 0:
-      nodes_quantity = 1
-      print("[warning] Invalid expected total cores ...")
-      print("[warning] Forcely set nodes_quantity to 1.")
+    default_nodes_quantity = \
+      round(expc_total_cores / env_para_list["cores_per_node"])
+    if (not isinstance(default_nodes_quantity, int)) or \
+       (default_nodes_quantity <= 0):
+     default_nodes_quantity = 1
+    print("[input] Please input the nodes quantity. [ %d ]"
+          %default_nodes_quantity)
+    nodes_quantity = input('> ')
+    if nodes_quantity.replace(' ','') == '':
+      nodes_quantity = default_nodes_quantity
+    else:
+      nodes_quantity = int(nodes_quantity)
+      if (not isinstance(nodes_quantity, int)) or (nodes_quantity <= 0):
+        nodes_quantity = 1
+        print("[warning] Invalid nodes qunatity ...")
+        print("[warning] Forcely set nodes_quantity to 1.")
+    print("[para] Using %d nodes." %nodes_quantity)
+    print("")
+    # Read the VASP6 OMP cpus number
+    cores_per_node = env_para_list["cores_per_node"]
+    if env_para_list["sys_type"] == 'pbs':
+      print("[do] Read in the VASP6 PBS OMP cups number...")
+      default_vasp6_omp_cups = calc_para_list.get("vasp6_omp_cups", 1)
+      if (not isinstance(default_vasp6_omp_cups, int)) or \
+        (default_vasp6_omp_cups <= 0):
+        default_vasp6_omp_cups = 1
+      print("[input] Please input the number of vasp6 OMP cups. [ %d ]"
+            %(default_vasp6_omp_cups))
+      vasp6_omp_cups = input('> ')
+      if vasp6_omp_cups.replace(' ','') == '':
+        vasp6_omp_cups = default_vasp6_omp_cups
+      else:
+        vasp6_omp_cups = int(vasp6_omp_cups)
+      if (cores_per_node <= 0) or \
+        (cores_per_node//vasp6_omp_cups*vasp6_omp_cups != cores_per_node):
+        print('[error] Invalid omp cups number...')
+        print('[tips] The OMP cups must be a divisor of the cores per node.')
+        sys.exit(1)
+      print("[para] Set the number of OMP cpus: %d" %(vasp6_omp_cups))
+      print("")
     # Write paras into the calc vr.input.json
-    with open('vr.input.json') as jfrp:
-      calc_para_list = json.load(jfrp)
     for env_para_name in env_para_name_list:
       calc_para_list[env_para_name] = env_para_list[env_para_name]
     calc_para_list["nodes_quantity"] = nodes_quantity
+    calc_para_list["vasp6_omp_cups"] = vasp6_omp_cups
     calc_para_list["task_name"] = task_name
     with open('vr.input.json', 'w') as jfwp:
       json.dump(calc_para_list, jfwp, indent=2)

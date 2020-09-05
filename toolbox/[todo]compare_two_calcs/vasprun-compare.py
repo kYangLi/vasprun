@@ -1,10 +1,11 @@
 import os 
 import sys
 import json
-import socket
+import argparse
 print("[do] Importing matplotlib, please wait...")
 import matplotlib.pyplot as plt
 plt.switch_backend('agg') # For GUI less server
+
 
 def grep(tstr, file):
   with open(file) as frp:
@@ -16,38 +17,35 @@ def grep(tstr, file):
       targets.append(line)
   return targets
 
+
 def env_check():
-  if os.path.isdir('report'):
-    _ = os.system("rm -rf report")
-  os.mkdir('report')
-  os.chdir('report')
+  if os.path.isdir('compare'):
+    _ = os.system("rm -rf compare")
+  os.mkdir('compare')
+  os.chdir('compare')
   os.mkdir('latex')
   os.mkdir('figure')
   os.chdir('..')
-  if (not os.path.isfile('vr.input.bm.json')) or \
-     (not os.path.isfile('vr.input.st.json')):
-    print("[error] vr.input.[bm,st].json not found...")
-    sys.exit(1) 
   return 0
 
-def read_civp_info():
-  with open('vr.input.bm.json') as jfrp:
-    bm_calc_paras = json.load(jfrp)
-  with open('vr.input.st.json') as jfrp:
-    st_calc_paras = json.load(jfrp)
-  bm_server = bm_calc_paras["hostname"]
-  st_server = st_calc_paras["hostname"]
-  bm_relax_vasp = bm_calc_paras["relax_vasp"]
-  bm_ssc_vasp = bm_calc_paras["ssc_vasp"]
-  st_relax_vasp = st_calc_paras["relax_vasp"]
-  st_ssc_vasp = st_calc_paras["ssc_vasp"]
-  civp = {"bm_server"     : bm_server,
-          "st_server"     : st_server,
-          "bm_relax_vasp" : bm_relax_vasp,
-          "bm_ssc_vasp"   : bm_ssc_vasp,
-          "st_relax_vasp" : st_relax_vasp,
-          "st_ssc_vasp"   : st_ssc_vasp}
-  return civp
+
+def get_command_line_input():
+  parser = argparse.ArgumentParser("vasprun compare script")
+  parser.add_argument('lib_vasprun', metavar='lib_vasprun_folder', 
+                       type=str, nargs=1,
+                       help='an integer for the accumulator')
+  parser.add_argument('calc_vasprun', metavar='calc_vasprun_folder', 
+                       type=str, nargs=1,
+                       help='an integer for the accumulator')
+  parser.add_argument('-b', '--no-band', dest='no_band', action='store_const',
+                      const=True, default=False,
+                      help='No band compare.')
+  args = parser.parse_args()
+  compare_args = {"lib_folder"  : args.lib_vasprun,
+                  "calc_folder" : args.calc_vasprun,
+                  "no_band"     : args.lib_vasprun}
+  return compare_args
+
 
 def get_res_data_file_location(obj_dir):
   all_paras_json = os.path.join(obj_dir, "vr.allpara.json")
@@ -72,6 +70,7 @@ def get_res_data_file_location(obj_dir):
   obj_dos_json = os.path.join(obj_res_dir, dos_res_folder, dos_fig+'.json')
   return nodes_quantity, total_cores, obj_res_json, \
          obj_band_json, obj_band_gap, obj_dos_json
+
 
 def get_bandgap_info(file):
   bandgap_info = {}
@@ -294,7 +293,7 @@ def band_plot(lib_band, calc_band, obj):
   plot_dpi = 300
   band_plot_file = '%s.band.%s' %(obj, plot_format)
   plt.savefig(band_plot_file, format=plot_format, dpi=plot_dpi)
-  return 'report/figure/%s' %(band_plot_file)
+  return 'compare/figure/%s' %(band_plot_file)
 
 
 def calc_band_diff(lib_band, calc_band):
@@ -326,7 +325,7 @@ def calc_band_diff(lib_band, calc_band):
 
 
 def plot_compare_band(calc_objs_infos, calc_obj_list):
-  os.chdir("report/figure")
+  os.chdir("compare/figure")
   for obj in calc_obj_list:
     print("[subdo] Plotting %s"%obj)
     lib_band_json = calc_objs_infos[obj]["lib"]["bandplot"]
@@ -394,7 +393,7 @@ def dos_plot(lib_dos, calc_dos, obj):
   plot_dpi = 300
   dos_plot_file = '%s.dos.%s' %(obj, plot_format)
   plt.savefig(dos_plot_file, format=plot_format, dpi=plot_dpi)
-  return 'report/figure/%s' %(dos_plot_file)
+  return 'compare/figure/%s' %(dos_plot_file)
 
 
 def calc_dos_diff(lib_dos, calc_dos):
@@ -421,7 +420,7 @@ def calc_dos_diff(lib_dos, calc_dos):
 
 
 def plot_compare_dos(calc_objs_infos, calc_obj_list):
-  os.chdir("report/figure")
+  os.chdir("compare/figure")
   for obj in calc_obj_list:
     lib_dos_json = calc_objs_infos[obj]["lib"]["dosplot"]
     calc_dos_json = calc_objs_infos[obj]["calc"]["dosplot"]
@@ -441,16 +440,15 @@ def plot_compare_dos(calc_objs_infos, calc_obj_list):
   return calc_objs_infos
 
 
-def report_with_json(calc_objs_infos, civp):
-  os.chdir("report")
-  calc_objs_infos["civp"] = civp
-  with open('report.json', 'w') as jfwp:
+def compare_with_json(calc_objs_infos):
+  os.chdir("compare")
+  with open('compare.json', 'w') as jfwp:
     json.dump(calc_objs_infos, jfwp, indent=2)
   os.chdir("..")
   return 0
 
 
-def get_report_info(calc_objs_infos, obj):
+def get_compare_info(calc_objs_infos, obj):
   lib_cpu_nodes = calc_objs_infos[obj]["lib"]["cpus"]["nodes"]
   lib_cpu_cores = calc_objs_infos[obj]["lib"]["cpus"]["cores"]
   lib_time_relax = calc_objs_infos[obj]["lib"]["time"]["relax"]
@@ -525,8 +523,8 @@ def get_report_info(calc_objs_infos, obj):
   com_mag_dos = calc_objs_infos[obj]["compare"]["mag_diff"]["dos"]
   com_band_diff = calc_objs_infos[obj]["compare"]["band_diff"]
   com_dos_diff = calc_objs_infos[obj]["compare"]["dos_diff"]
-  com_band_plot = 'report/figure/%s.band.png' %obj
-  com_dos_plot = 'report/figure/%s.dos.png' %obj
+  com_band_plot = 'compare/figure/%s.band.png' %obj
+  com_dos_plot = 'compare/figure/%s.dos.png' %obj
   # Str
   lib_cpu_nodes = str(lib_cpu_nodes)
   lib_cpu_cores = str(lib_cpu_cores)
@@ -535,23 +533,23 @@ def get_report_info(calc_objs_infos, obj):
   lib_time_band = str(round(lib_time_band))
   lib_time_dos = str(round(lib_time_dos))
   lib_time_total = str(round(lib_time_total))
-  lib_latt = ['%.8f'%val for val in lib_latt]
-  lib_force = ['%.8e'%val for val in lib_force]
-  lib_fermi_relax = '%.4f'%(lib_fermi_relax)
-  lib_fermi_ssc = '%.4f'%(lib_fermi_ssc)
-  lib_fermi_band = '%.4f'%(lib_fermi_band)
-  lib_fermi_dos ='%.4f'%(lib_fermi_dos)
-  lib_energy_relax = '%.8f'%(lib_energy_relax)
-  lib_energy_ssc = '%.8f'%(lib_energy_ssc)
-  lib_energy_band = '%.8f'%(lib_energy_band)
-  lib_energy_dos = '%.8f'%(lib_energy_dos)
-  lib_band_gap = '%.6f'%(lib_band_gap)
+  lib_latt = [str(val) for val in lib_latt]
+  lib_force = ['%e'%val for val in lib_force]
+  lib_fermi_relax = str(lib_fermi_relax)
+  lib_fermi_ssc = str(lib_fermi_ssc)
+  lib_fermi_band = str(lib_fermi_band)
+  lib_fermi_dos = str(lib_fermi_dos)
+  lib_energy_relax = str(lib_energy_relax)
+  lib_energy_ssc = str(lib_energy_ssc)
+  lib_energy_band = str(lib_energy_band)
+  lib_energy_dos = str(lib_energy_dos)
+  lib_band_gap = str(lib_band_gap)
   lib_band_homo = str(lib_band_homo)
-  lib_band_vbm = '%.6f'%(lib_band_vbm)
-  lib_mag_relax = '%.6f'%(lib_mag_relax)
-  lib_mag_ssc = '%.6f'%(lib_mag_ssc)
-  lib_mag_band = '%.6f'%(lib_mag_band)
-  lib_mag_dos = '%.6f'%(lib_mag_dos)
+  lib_band_vbm = str(lib_band_vbm)
+  lib_mag_relax = '%.6f'%lib_mag_relax
+  lib_mag_ssc = '%.6f'%lib_mag_ssc
+  lib_mag_band = '%.6f'%lib_mag_band
+  lib_mag_dos = '%.6f'%lib_mag_dos
   calc_cpu_nodes = str(calc_cpu_nodes)
   calc_cpu_cores = str(calc_cpu_cores)
   calc_time_relax = str(round(calc_time_relax))
@@ -559,19 +557,19 @@ def get_report_info(calc_objs_infos, obj):
   calc_time_band = str(round(calc_time_band))
   calc_time_dos = str(round(calc_time_dos))
   calc_time_total = str(round(calc_time_total))
-  calc_latt = ['%.8f'%val for val in calc_latt]
-  calc_force = ['%.8e'%val for val in calc_force]
-  calc_fermi_relax = '%.4f'%(calc_fermi_relax)
-  calc_fermi_ssc = '%.4f'%(calc_fermi_ssc)
-  calc_fermi_band = '%.4f'%(calc_fermi_band)
-  calc_fermi_dos = '%.4f'%(calc_fermi_dos)
-  calc_energy_relax = '%.8f'%(calc_energy_relax)
-  calc_energy_ssc = '%.8f'%(calc_energy_ssc)
-  calc_energy_band = '%.8f'%(calc_energy_band)
-  calc_energy_dos = '%.8f'%(calc_energy_dos)
-  calc_band_gap = '%.6f'%(calc_band_gap)
+  calc_latt = [str(val) for val in calc_latt]
+  calc_force = ['%e'%val for val in calc_force]
+  calc_fermi_relax = str(calc_fermi_relax)
+  calc_fermi_ssc = str(calc_fermi_ssc)
+  calc_fermi_band = str(calc_fermi_band)
+  calc_fermi_dos = str(calc_fermi_dos)
+  calc_energy_relax = str(calc_energy_relax)
+  calc_energy_ssc = str(calc_energy_ssc)
+  calc_energy_band = str(calc_energy_band)
+  calc_energy_dos = str(calc_energy_dos)
+  calc_band_gap = str(calc_band_gap)
   calc_band_homo = str(calc_band_homo)
-  calc_band_vbm = '%.6f'%(calc_band_vbm)
+  calc_band_vbm = str(calc_band_vbm)
   calc_mag_relax = '%.6f'%calc_mag_relax
   calc_mag_ssc = '%.6f'%calc_mag_ssc
   calc_mag_band = '%.6f'%calc_mag_band
@@ -583,25 +581,25 @@ def get_report_info(calc_objs_infos, obj):
   com_time_band = str(round(com_time_band))
   com_time_dos = str(round(com_time_dos))
   com_time_total = str(round(com_time_total))
-  com_latt = ['%.8f'%(val) for val in com_latt]
-  com_force = ['%.8e'%val for val in com_force]
-  com_fermi_relax = '%.4f'%(com_fermi_relax)
-  com_fermi_ssc = '%.4f'%(com_fermi_ssc)
-  com_fermi_band = '%.4f'%(com_fermi_band)
-  com_fermi_dos = '%.4f'%(com_fermi_dos)
-  com_energy_relax = '%.8f'%(com_energy_relax)
-  com_energy_ssc = '%.8f'%(com_energy_ssc)
-  com_energy_band = '%.8f'%(com_energy_band)
-  com_energy_dos = '%.8f'%(com_energy_dos)
-  com_band_gap = '%.6f'%(com_band_gap)
+  com_latt = [str(val) for val in com_latt]
+  com_force = ['%e'%val for val in com_force]
+  com_fermi_relax = str(com_fermi_relax)
+  com_fermi_ssc = str(com_fermi_ssc)
+  com_fermi_band = str(com_fermi_band)
+  com_fermi_dos = str(com_fermi_dos)
+  com_energy_relax = str(com_energy_relax)
+  com_energy_ssc = str(com_energy_ssc)
+  com_energy_band = str(com_energy_band)
+  com_energy_dos = str(com_energy_dos)
+  com_band_gap = str(com_band_gap)
   com_band_homo = str(com_band_homo)
-  com_band_vbm = '%.6f'%(com_band_vbm)
+  com_band_vbm = str(com_band_vbm)
   com_mag_relax = '%.6f'%com_mag_relax
   com_mag_ssc = '%.6f'%com_mag_ssc
   com_mag_band = '%.6f'%com_mag_band
   com_mag_dos = '%.6f'%com_mag_dos
-  com_band_diff = '%.16f'%(com_band_diff)
-  com_dos_diff = '%.16f'%(com_dos_diff)
+  com_band_diff = str(com_band_diff)
+  com_dos_diff = str(com_dos_diff)
   return lib_cpu_nodes, lib_cpu_cores, lib_time_relax, lib_time_ssc, \
     lib_time_band, lib_time_dos, lib_time_total, lib_latt, lib_force, \
     lib_fermi_relax, lib_fermi_ssc, lib_fermi_band, lib_fermi_dos, \
@@ -621,20 +619,14 @@ def get_report_info(calc_objs_infos, obj):
     com_mag_dos, com_band_diff, com_dos_diff, com_band_plot, com_dos_plot
 
 
-def report_with_txt(calc_objs_infos, calc_obj_list, civp):
-  os.chdir("report")
+def compare_with_txt(calc_objs_infos, calc_obj_list):
+  os.chdir("compare")
   obj_index = 0
-  report_txt = [
+  compare_txt = [
   '                                                                    ',
   '                           - VASPRUN SERVER TEST -                  ',
   '                                                                    ',
-  'Benchmark  --- Hostname   [ %s ]' %civp["bm_server"],
-  '            |- Relax VASP [ %s ]' %civp["bm_relax_vasp"],
-  '            |- SSC VASP   [ %s ]' %civp["bm_ssc_vasp"],
-  'Curr. Test --- Hostname   [ %s ]' %civp["st_server"],
-  '            |- Relax VASP [ %s ]' %civp["st_relax_vasp"],
-  '            |- SSC VASP   [ %s ]' %civp["st_ssc_vasp"],
-  '                                                                    ',]
+  ]
   for obj in calc_obj_list:
     lib_cpu_nodes, lib_cpu_cores, lib_time_relax, lib_time_ssc, lib_time_band, \
     lib_time_dos, lib_time_total, lib_latt, lib_force, lib_fermi_relax, \
@@ -653,12 +645,12 @@ def report_with_txt(calc_objs_infos, calc_obj_list, civp):
     com_energy_band, com_energy_dos, com_band_gap, com_band_homo, \
     com_band_vbm, com_mag_relax, com_mag_ssc, com_mag_band, com_mag_dos, \
     com_band_diff, com_dos_diff, com_band_plot, com_dos_plot \
-      = get_report_info(calc_objs_infos, obj)
+      = get_compare_info(calc_objs_infos, obj)
     obj_index += 1
-    curr_obj_report_txt = [
+    curr_obj_compare_txt = [
     '[Object %d] %s' %(obj_index, obj),
     '==============================================================================',
-    ' Items.          ||     Benchmark     |   Current Test    |       Diff.       ',
+    ' Items.          ||     benchmark     |   current vasp    |       diff.       ',
     '-----------------++-------------------+-------------------+-------------------',
     ' CPUs    | Nodes || %17s | %17s | %17s '%(lib_cpu_nodes, calc_cpu_nodes, com_cpu_nodes),
     '         | Cores || %17s | %17s | %17s '%(lib_cpu_cores, calc_cpu_cores, com_cpu_cores),
@@ -704,26 +696,24 @@ def report_with_txt(calc_objs_infos, calc_obj_list, civp):
     ' ',
     ' ',
     ]
-    report_txt += curr_obj_report_txt
-  with open('report.txt', 'w') as fwp:
-    for line in report_txt:
+    compare_txt += curr_obj_compare_txt
+  with open('compare.txt', 'w') as fwp:
+    for line in compare_txt:
       fwp.write(line + '\n')
   os.chdir("..")
   return 0 
 
 
-def report_with_pdflatex(calc_objs_infos, calc_obj_list, civp):
-  os.chdir("report/latex")
+def compare_with_pdflatex(calc_objs_infos, calc_obj_list):
+  os.chdir("compare/latex")
   obj_index = 0
-  report_latex = [
+  compare_latex = [
   '\\documentclass[a4paper, 12pt]{article}',
   '\\usepackage{float}',
   '\\usepackage{graphicx}',
-  '\\usepackage{grffile}',
   '\\usepackage{subfigure}',
   '\\usepackage{multirow}',
   '\\usepackage[colorlinks,linkcolor=red,anchorcolor=blue,citecolor=green]{hyperref}',
-  '\\setcounter{section}{-1}',
   ' ',
   '\\title{\\textbf{VASPRUN SERVER TEST}}',
   '\\author{}',
@@ -731,24 +721,6 @@ def report_with_pdflatex(calc_objs_infos, calc_obj_list, civp):
   '\\begin{document}',
   '\\maketitle',
   '\\tableofcontents',
-  '',
-  '\\section{Basic Information}', 
-  '\\begin{table}[H]\\centering\\small',
-  '  \\begin{tabular}{l||l|p{10cm}}',
-  '\\hline',
-  '\\hline',
-  'Benchmark & Hostname   & %s \\\\' %civp["bm_server"],
-  '          & Relax VASP & %s \\\\' %civp["bm_relax_vasp"],
-  '          & SSC VASP   & %s \\\\' %civp["bm_ssc_vasp"],
-  '\\hline',
-  'Current Test & Hostname   & %s \\\\' %civp["st_server"],
-  '             & Relax VASP & %s \\\\' %civp["st_relax_vasp"],
-  '             & SSC VASP   & %s \\\\' %civp["st_ssc_vasp"],
-  '\\hline',
-  '\\hline',
-  '  \\end{tabular}',
-  '\\end{table}',
-  '',
   '\\clearpage',
   '']
   for obj in calc_obj_list:
@@ -769,15 +741,15 @@ def report_with_pdflatex(calc_objs_infos, calc_obj_list, civp):
     com_energy_band, com_energy_dos, com_band_gap, com_band_homo, \
     com_band_vbm, com_mag_relax, com_mag_ssc, com_mag_band, com_mag_dos, \
     com_band_diff, com_dos_diff, com_band_plot, com_dos_plot \
-      = get_report_info(calc_objs_infos, obj)
+      = get_compare_info(calc_objs_infos, obj)
     obj_index += 1
-    obj_report_latex = [
+    obj_compare_latex = [
     '\\section{[Object %d] %s}'%(obj_index, obj), 
     '\\begin{table}[H]\\centering',
     '  \\begin{tabular}{l|l||rrr}',
     '    \\hline',
     '    \\hline',
-    '    \\multicolumn{2}{l||}{Items} & Benchmark & Current Test & Difference\\\\',
+    '    \\multicolumn{2}{l||}{Items} & benchmark & current vasp & diff.\\\\',
     '    \\hline',
     '    \\multirow{2}{*}{CPUs} & Nodes & %10s & %10s & %10s\\\\'%(lib_cpu_nodes, calc_cpu_nodes, com_cpu_nodes),
     '                           & Cores & %10s & %10s & %10s\\\\'%(lib_cpu_cores, calc_cpu_cores, com_cpu_cores),
@@ -825,19 +797,19 @@ def report_with_pdflatex(calc_objs_infos, calc_obj_list, civp):
     '\\end{table}',
     '\\begin{figure}[H]\\centering',
     '  \\subfigure[Band compare]{',
-    '    \\includegraphics[width=0.9\\textwidth]{%s}}'%(com_band_plot.replace('report','..')),
+    '    \\includegraphics[width=0.9\\textwidth]{%s}}'%(com_band_plot.replace('compare','..')),
     '  \\subfigure[DOS compare]{',
-    '    \\includegraphics[width=0.9\\textwidth]{%s}}'%(com_dos_plot.replace('report','..')),
+    '    \\includegraphics[width=0.9\\textwidth]{%s}}'%(com_dos_plot.replace('compare','..')),
     '  \\caption{Band-DOS compare}',
     '  \\label{fig::banddos::%d}'%(obj_index),
     '\\end{figure}',
     ' ',
     ' ']
-    report_latex += obj_report_latex
-  report_latex.append('\\end{document}')
+    compare_latex += obj_compare_latex
+  compare_latex.append('\\end{document}')
   # Seve file 
-  with open('report.tex', 'w') as fwp:
-    for line in report_latex:
+  with open('compare.tex', 'w') as fwp:
+    for line in compare_latex:
       if 'includegraphics' not in line:
         line = line.replace('_', '\\_')
       fwp.write(line + '\n')
@@ -845,20 +817,18 @@ def report_with_pdflatex(calc_objs_infos, calc_obj_list, civp):
   pdflatex = os.popen('which pdflatex 2>/dev/null').read()
   if pdflatex == '':
     print("[warning] No pdflatex was found in current server...")
-    print("[tips] Downloads the whole report folder, and execute: ")
-    print("       ` cd report/latex; pdflatex report.tex; `")
-    print("       `                  pdflatex report.tex; `")
-    print("       `                  pdflatex report.tex; `")
-    print("       to obtain the report.pdf file ...")
+    print("[tips] Downloads the whole compare folder, and execute: ")
+    print("       ` cd compare/latex; pdflatex compare.tex;  pdflatex compare.tex; pdflatex compare.tex `")
+    print("       to obtain the compare.pdf file ...")
   else:
-    command = 'pdflatex report.tex > /dev/null;\
-               pdflatex report.tex > /dev/null;\
-               pdflatex report.tex > /dev/null'
+    command = 'pdflatex compare.tex > /dev/null;\
+               pdflatex compare.tex > /dev/null;\
+               pdflatex compare.tex > /dev/null'
     _ = os.system(command)
-    if not os.path.isfile('report.pdf'):
+    if not os.path.isfile('compare.pdf'):
       print("[error] pdflatex failed...")
       sys.exit(1)
-    _ = os.system('cp report.pdf ..')
+    _ = os.system('cp compare.pdf ..')
   os.chdir('../..')
   return 0 
 
@@ -868,10 +838,9 @@ def main():
   print("[do] Checking the envriment...")
   env_check()
   print(" ")
-  print("[do] Recording the cluster info and vasp path...")
-  civp = read_civp_info()
+  compare_args = get_command_line_input()
   print("[do] Reading the calculation result...")
-  calc_objs_infos, calc_obj_list = get_calc_objs_infos()
+  calc_objs_infos, calc_obj_list = get_calc_objs_infos(compare_args)
   print(" ")
   print("[do] Comparing the calculation result...")
   calc_objs_infos = compare_lib_calc(calc_objs_infos, calc_obj_list)
@@ -880,15 +849,15 @@ def main():
   calc_objs_infos = plot_compare_band(calc_objs_infos, calc_obj_list)
   calc_objs_infos = plot_compare_dos(calc_objs_infos, calc_obj_list)
   print(" ")
-  print("[do] Writing the report file...")
-  print("[sub-do] Writing report.json file...")
-  report_with_json(calc_objs_infos, civp)
-  print("[sub-do] Writing report.txt file...")
-  report_with_txt(calc_objs_infos, calc_obj_list, civp)
-  print("[sub-do] Writing report.tex file...")
-  report_with_pdflatex(calc_objs_infos, calc_obj_list, civp)
+  print("[do] Writing the compare file...")
+  print("[subdo] Writing compare.json file...")
+  compare_with_json(calc_objs_infos)
+  print("[subdo] Writing compare.txt file...")
+  compare_with_txt(calc_objs_infos, calc_obj_list)
+  print("[subdo] Writing compare.tex file...")
+  compare_with_pdflatex(calc_objs_infos, calc_obj_list)
   print(" ")
-  print("[done] Report succeed!")
+  print("[done] compare succeed!")
   return 0 
 
 

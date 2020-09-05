@@ -6,6 +6,7 @@ import os
 import sys
 import json
 import time 
+import socket
 
 def env_check():
   if not os.path.isfile('vasprun_path.json'):
@@ -15,8 +16,8 @@ def env_check():
      (not os.path.isdir('lib/private')):
     print("[error] Calculation lib not found...")
     sys.exit(1)
-  if not os.path.isfile('vr.input.json'):
-    print("[error] No vr.input.json was found under current dir. ...")
+  if not os.path.isfile('vr.input.bm.json'):
+    print("[error] No vr.input.bm.json was found under current dir. ...")
     sys.exit(1)
   return 0
 
@@ -40,11 +41,16 @@ def get_lib_objs():
 
 def paras_read_and_write(lib_obj_list):
   # Read in test parameters
-  with open('vr.input.json') as jfrp:
+  with open('vr.input.bm.json') as jfrp:
     env_para_list = json.load(jfrp)
+  # Report the mechine hostname
+  env_para_list["hostname"] = socket.gethostname()
+  with open('vr.input.bm.json', 'w') as jfwp:
+    json.dump(env_para_list, jfwp, indent=2)
+  # Define the env list
   env_para_name_list = ["intel_module", "relax_vasp", "ssc_vasp", 
-                         "vaspkit", "sys_type", "cores_per_node", 
-                         "pbs_queue"]
+                        "vaspkit", "sys_type", "cores_per_node", 
+                        "pbs_queue"]
   for env_para_name in env_para_name_list:
     print("[para] Set %-14s   ::   %s" 
           %(env_para_name, str(env_para_list[env_para_name])))
@@ -55,6 +61,7 @@ def paras_read_and_write(lib_obj_list):
     print("")
     print("-------------------------------------------------------------------")
     print("[do] Under benchmark object: %s" %lib_obj)
+    print("-------------------------------------------------------------------")
     os.chdir(lib_obj)
     # Check if all ITEMS:
     for file in ['INCAR', 'KPOINTS']:
@@ -100,9 +107,11 @@ def paras_read_and_write(lib_obj_list):
         default_paras = json.load(jfrp)
       default_pbs_walltime = default_paras.get("pbs_walltime")
       default_pew = default_paras.get("plot_energy_window")
+      default_vasp6_omp_cups = default_paras.get("vasp6_omp_cups", 1)
     else:
       default_pbs_walltime = 48
       default_pew = [-6.0, 6.0]
+      default_vasp6_omp_cups = 1
     # Determine the pbs wall time
     if env_para_list["sys_type"] == 'pbs':
       print("[input] Please input PBS walltime for this object. [ %d ]" 
@@ -116,6 +125,27 @@ def paras_read_and_write(lib_obj_list):
         print("[error] Bad input...")
         sys.exit(1)
       print("[para] Set PBS walltime to: %d" %pbs_walltime)
+      print("")
+    # VASP6 OMP cpus number
+    cores_per_node = env_para_list["cores_per_node"]
+    if env_para_list["sys_type"] == 'pbs':
+      print("[do] Read in the VASP6 PBS OMP cups number...")
+      if (not isinstance(default_vasp6_omp_cups, int)) or \
+        (default_vasp6_omp_cups <= 0):
+        default_vasp6_omp_cups = 1
+      print("[input] Please input the number of vasp6 OMP cups. [ %d ]"
+            %(default_vasp6_omp_cups))
+      vasp6_omp_cups = input('> ')
+      if vasp6_omp_cups.replace(' ','') == '':
+        vasp6_omp_cups = default_vasp6_omp_cups
+      else:
+        vasp6_omp_cups = int(vasp6_omp_cups)
+      if (cores_per_node <= 0) or \
+        (cores_per_node//vasp6_omp_cups*vasp6_omp_cups != cores_per_node):
+        print('[error] Invalid omp cups number...')
+        print('[tips] The OMP cups must be a divisor of the cores per node.')
+        sys.exit(1)
+      print("[para] Set the number of OMP cpus: %d" %(vasp6_omp_cups))
       print("")
     # Determine the plot energy window 
     print("[input] Please input the plot energy window. [ %d, %d ]" 
@@ -140,6 +170,7 @@ def paras_read_and_write(lib_obj_list):
       calc_para_list[env_para_name] = env_para_list[env_para_name]
     calc_para_list["task_name"] = task_name
     calc_para_list["nodes_quantity"] = nodes_quantity
+    calc_para_list["vasp6_omp_cups"] = vasp6_omp_cups
     calc_para_list["pbs_walltime"] = pbs_walltime
     calc_para_list["plot_energy_window"] = pew
     calc_para_list["task_list"] = 'TTTT'
