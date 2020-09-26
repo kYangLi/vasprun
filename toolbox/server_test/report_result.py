@@ -288,7 +288,7 @@ def band_plot(lib_band, calc_band, obj):
       yl = lib_band["energys"]["dn"][band_index]
       yc = calc_band["energys"]["dn"][band_index]
       band_plot.plot(x, yl, '-', color='blue', linewidth=1.0)
-      band_plot.plot(x, yc, '--', color='black',  linewidth=1.0)
+      band_plot.plot(x, yc, '--', color='black', linewidth=1.0)
   # Save the figure
   plot_format = 'png'
   plot_dpi = 300
@@ -691,10 +691,10 @@ def report_with_txt(calc_objs_infos, calc_obj_list, civp):
     ' (eV)    | HOMO  || %17s | %17s | %17s '%(lib_band_homo, calc_band_homo, com_band_homo),
     '         | VBM   || %17s | %17s | %17s '%(lib_band_vbm, calc_band_vbm, com_band_vbm),
     '         | Diff. || %37s '%(com_band_diff),
-    '         | Plot  || Check `%s`.' %com_band_plot,
+    '         | Plot  || Check `%s`. (Dashed line for benchmark)'%com_band_plot,
     '-----------------++-------------------+-------------------+-------------------',
     ' DOS     | Diff. || %37s '%(com_dos_diff),
-    '         | Plot  || Check `%s`.' %com_dos_plot,
+    '         | Plot  || Check `%s`. (Dashed line for benchmark)'%com_dos_plot,
     '-----------------++-------------------+-------------------+-------------------',
     ' Mag.    | Relax || %17s | %17s | %17s '%(lib_mag_relax, calc_mag_relax, com_mag_relax),
     ' (eV)    | SSC   || %17s | %17s | %17s '%(lib_mag_ssc, calc_mag_ssc, com_mag_ssc),
@@ -809,11 +809,11 @@ def report_with_pdflatex(calc_objs_infos, calc_obj_list, civp):
     '    \\multirow{5}{*}{Band (eV)}  & Gap   & %10s & %10s & %10s\\\\'%(lib_band_gap, calc_band_gap, com_band_gap),
     '                                 & HOMO  & %10s & %10s & %10s\\\\'%(lib_band_homo, calc_band_homo, com_band_homo),
     '                                 & VBM   & %10s & %10s & %10s\\\\'%(lib_band_vbm, calc_band_vbm, com_band_vbm),
-    '                                 & Diff. & \\multicolumn{2}{|r}{%10s}\\\\'%(com_band_diff),
-    '                                 & Plot  & See FIG.\\ref{fig::banddos::%d}(a)\\\\' %obj_index,
+    '                                 & Diff. & \\multicolumn{3}{c}{%10s}\\\\'%(com_band_diff),
+    '                                 & Plot  & \\multicolumn{3}{c}{See FIG.\\ref{fig::banddos::%d}(a) (Solid line for benchmark)}\\\\' %obj_index,
     '    \\hline',
-    '    \\multirow{2}{*}{DOS} & Diff. & \\multicolumn{2}{|r}{%10s}\\\\'%(com_dos_diff),
-    '                          & Plot  & See FIG.\\ref{fig::banddos::%d}(b)\\\\' %obj_index,
+    '    \\multirow{2}{*}{DOS} & Diff. & \\multicolumn{3}{c}{%10s}\\\\'%(com_dos_diff),
+    '                          & Plot  & \\multicolumn{3}{c}{See FIG.\\ref{fig::banddos::%d}(b) (Solid line for benchmark)}\\\\' %obj_index,
     '                          \\hline',
     '    \\multirow{4}{*}{Mag. (\\(\\mu_B\\))} & Relax & %10s & %10s & %10s\\\\'%(lib_mag_relax, calc_mag_relax, com_mag_relax),
     '                                          & SSC   & %10s & %10s & %10s\\\\'%(lib_mag_ssc, calc_mag_ssc, com_mag_ssc),
@@ -851,6 +851,7 @@ def report_with_pdflatex(calc_objs_infos, calc_obj_list, civp):
     print("       `                  pdflatex report.tex; `")
     print("       to obtain the report.pdf file ...")
   else:
+    print("[sub-do] Compiling the report.tex to report.pdf...")
     command = 'pdflatex report.tex > /dev/null;\
                pdflatex report.tex > /dev/null;\
                pdflatex report.tex > /dev/null'

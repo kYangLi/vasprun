@@ -69,11 +69,11 @@ def paras_read_and_write(calc_obj_list):
   with open('vr.input.st.json', 'w') as jfwp:
     json.dump(env_para_list, jfwp, indent=2)
   # Define the env name
-  env_para_name_list = ["intel_module", "relax_vasp", "ssc_vasp", 
-                        "vaspkit", "sys_type", "cores_per_node", 
+  env_para_name_list = ["intel_module", "relax_vasp", "ssc_vasp",
+                        "vaspkit", "sys_type", "cores_per_node",
                         "pbs_queue"]
   for env_para_name in env_para_name_list:
-    print("[para] Set %-14s   ::   %s" 
+    print("[para] Set %-14s   ::   %s"
           %(env_para_name, str(env_para_list.get(env_para_name, None))))
   print("[info] Exit this script to modify those parameters in vr.input.json .")
   # Determine the nodes quantity
@@ -176,7 +176,7 @@ def submit_jobs(calc_obj_list):
     nodes_quantity = calc_para_list["nodes_quantity"]
     cores_per_node = calc_para_list["cores_per_node"]
     total_cores = nodes_quantity * cores_per_node
-    print("[submit] ST :: %-60s :: Nodes %3d   Cores %4d" 
+    print("[submit] ST :: %-60s :: Nodes %3d   Cores %4d"
           %(calc_obj, nodes_quantity, total_cores))
     command = '(echo; echo; echo; echo; echo; echo; echo; echo; echo; echo) \
                | %s > /dev/null' %(vasprun)

@@ -1,9 +1,9 @@
 # Author: liyang@cmt.tsinghua
 # Date: 2020.8.2
-# Descripution: This python script is designed for run vasp 
+# Descripution: This python script is designed for run vasp
 #               calculation with one command.
 
-import os 
+import os
 import sys
 import json
 
@@ -33,7 +33,7 @@ def check_input_json(vasprun_path):
   with open(input_json) as jfrp:
     calc_para_list = json.load(jfrp)
   return calc_para_list
-  
+
 
 def read_parameters():
   print("")
@@ -61,9 +61,13 @@ def read_parameters():
   path_list = {"vasprun_path" : vasprun_path,
                "python_exec"  : python_exec}
   calc_para_list = check_input_json(vasprun_path)
-  sys_type_list = ["pbs","slurm","nscc", "direct"]
+  sys_type_list = ["pbs", "slurm", "nscc", "direct"]
+  # Remove the older RESULT
+  result_folder = filename_list["result_folder"]
+  if os.path.isdir(result_folder):
+    _ = os.system('rm -r %s' %result_folder)
   ## Read from command line
-  # Path list 
+  # Path list
   print("[para] You are using python: %s" %python_exec)
   print("[para] You are using the vasprun in: %s" %vasprun_path)
   print("")
@@ -87,7 +91,7 @@ def read_parameters():
     default_task_list = 'TTTT'
   print("[input] Please input the selected task list. [ %s ]"%default_task_list)
   task_list = input("> ")
-  if task_list.replace(' ','') == '':
+  if task_list.replace(' ', '') == '':
     task_list = default_task_list
   task_list = task_list.upper()
   if ('T' not in task_list) or (len(task_list) != 4):
@@ -217,7 +221,7 @@ def read_parameters():
     print("[input] Please input the number of vasp6 OMP cups. [ %d ]"
           %(default_vasp6_omp_cups))
     vasp6_omp_cups = input('> ')
-    if vasp6_omp_cups.replace(' ','') == '':
+    if vasp6_omp_cups.replace(' ', '') == '':
       vasp6_omp_cups = default_vasp6_omp_cups
     else:
       vasp6_omp_cups = int(vasp6_omp_cups)
@@ -325,16 +329,18 @@ def file_check(calc_para_list):
   task_list = calc_para_list["task_list"]
   ## POSCAR
   print("[do] Checing POSCAR...")
-  element_table = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na',
-   'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 
-   'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 
-   'Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Tu', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 
-   'Sn', 'Sb', 'Te', 'I', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 
-   'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', 'Hf', 'Ta', 'W', 'Re', 
-   'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr', 
-   'Ra', 'Ac', 'Th', 'Pa', 'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 
-   'Md', 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg', 'Cn', 
-   'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og']
+  element_table = ['H',  'He', 'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne',
+                   'Na', 'Mg', 'Al', 'Si', 'P' , 'S' , 'Cl', 'Ar', 'K' , 'Ca',
+                   'Sc', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
+                   'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y' , 'Zr',
+                   'Nb', 'Mo', 'Tc', 'Tu', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn',
+                   'Sb', 'Te', 'I' , 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd',
+                   'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb',
+                   'Lu', 'Hf', 'Ta', 'W' , 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg',
+                   'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr', 'Ra', 'Ac', 'Th',
+                   'Pa', 'U' , 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm',
+                   'Md', 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds',
+                   'Rg', 'Cn', 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og']
   if not os.path.isfile('POSCAR'):
     print("[error] POSCAR not found...")
     sys.exit(1)
@@ -363,31 +369,31 @@ def file_check(calc_para_list):
   ## INCAR && KPOINTS
   print("[do] Checking INCAR & KPOINTS...")
   if task_list[0] == 'T':
-    if (not os.path.isfile('INCAR.RELAX')):
+    if not os.path.isfile('INCAR.RELAX'):
       print("[error] INCAR.RELAX not found...")
       sys.exit(1)
-    if (not os.path.isfile('KPOINTS.RELAX')):
+    if not os.path.isfile('KPOINTS.RELAX'):
       print("[error] KPOINTS.RELAX not found...")
       sys.exit(1)
   if task_list[1] == 'T':
-    if (not os.path.isfile('INCAR.SSC')):
+    if not os.path.isfile('INCAR.SSC'):
       print("[error] INCAR.SSC not found...")
       sys.exit(1)
-    if (not os.path.isfile('KPOINTS.SSC')):
+    if not os.path.isfile('KPOINTS.SSC'):
       print("[error] KPOINTS.SSC not found...")
       sys.exit(1)
   if task_list[2] == 'T':
-    if (not os.path.isfile('INCAR.BAND')):
+    if not os.path.isfile('INCAR.BAND'):
       print("[error] INCAR.BAND not found...")
       sys.exit(1)
-    if (not os.path.isfile('KPOINTS.BAND')):
+    if not os.path.isfile('KPOINTS.BAND'):
       print("[error] KPOINTS.BAND not found...")
       sys.exit(1)
   if task_list[3] == 'T':
-    if (not os.path.isfile('INCAR.DOS')):
+    if not os.path.isfile('INCAR.DOS'):
       print("[error] INCAR.DOS not found...")
       sys.exit(1)
-    if (not os.path.isfile('KPOINTS.DOS')):
+    if not os.path.isfile('KPOINTS.DOS'):
       print("[error] KPOINTS.DOS not found...")
       sys.exit(1)
   print("[done] INCAR & KPOINTS PASS.")
@@ -409,7 +415,7 @@ def vasp_submit(filename_list, calc_para_list, path_list):
   task_name = calc_para_list["task_name"]
   vasp_calc_script = os.path.join(vasprun_path, 'submit', 'vasp_calc.py')
   python_exec = os.popen('which python').read().replace('\n','')
-  # PBS system 
+  # PBS system
   if sys_type == 'pbs':
     pbs_walltime = calc_para_list["pbs_walltime"]
     pbs_queue = calc_para_list["pbs_queue"]
@@ -421,14 +427,17 @@ def vasp_submit(filename_list, calc_para_list, path_list):
     script = script.replace('__nodes_quantity__', str(nodes_quantity))
     script = script.replace('__cores_per_node__', str(cores_per_node))
     script = script.replace('__pbs_walltime__', str(pbs_walltime))
-    script = script.replace('__pbs_queue__', pbs_queue)
+    if pbs_queue == 'unset-pbs-queue':
+      script = script.replace('#PBS -q', '##PBS -q')
+    else:
+      script = script.replace('__pbs_queue__', pbs_queue)
     script = script.replace('__python_exec__', python_exec)
     script = script.replace('__vasp_calc_script__', vasp_calc_script)
     script = script.replace('__mpi_mechinefile__', mpi_machinefile)
     with open('vasp_submit.pbs.sh', 'w') as fwp:
       fwp.write(script)
     command = 'qsub vasp_submit.pbs.sh'
-  # SLURM system 
+  # SLURM system
   elif sys_type == 'slurm':
     pbs_queue = calc_para_list["pbs_queue"]
     submit_file = "%s/submit/slurm.sh" %vasprun_path
@@ -437,7 +446,10 @@ def vasp_submit(filename_list, calc_para_list, path_list):
     script = script.replace('__task_name__', task_name)
     script = script.replace('__nodes_quantity__', str(nodes_quantity))
     script = script.replace('__total_cores__', str(total_cores))
-    script = script.replace('__pbs_queue__', pbs_queue)
+    if pbs_queue == 'unset-pbs-queue':
+      script = script.replace('#PBS -q', '##PBS -q')
+    else:
+      script = script.replace('__pbs_queue__', pbs_queue)
     script = script.replace('__python_exec__', python_exec)
     script = script.replace('__vasp_calc_script__', vasp_calc_script)
     with open('vasp_submit.slurm.sh', 'w') as fwp:

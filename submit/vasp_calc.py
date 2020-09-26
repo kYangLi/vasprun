@@ -66,7 +66,7 @@ def mpirun(filename_list, calc_para_list, vasp):
                                              total_cores_number,
                                              vasp,
                                              vasp_log)
-  elif sys_type  == 'direct':
+  elif sys_type == 'direct':
     vasp6_omp_cups = calc_para_list["vasp6_omp_cups"]
     vasp_process_num = total_cores_number // vasp6_omp_cups
     process_per_node = vasp_process_num // nodes_quantity
@@ -74,7 +74,6 @@ def mpirun(filename_list, calc_para_list, vasp):
                mpirun  -ppn %d -np %d %s >> %s" \
                %(vasp6_omp_cups, process_per_node,
                  vasp_process_num, vasp, vasp_log)
-  
   start_time = time.time()
   _ = os.system("date >> %s" %vasp_log)
   _ = os.system(intel_module + '; ' + command)

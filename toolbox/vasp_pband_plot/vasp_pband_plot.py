@@ -127,10 +127,10 @@ def read_kpath_info(plot_args):
         if rlv_index > 2:
           writing_rlv = False
           continue
-        line_ele = line.split()
-        rlv[rlv_index, 0] = float(line_ele[3])
-        rlv[rlv_index, 1] = float(line_ele[4])
-        rlv[rlv_index, 2] = float(line_ele[5])
+        line = line.replace('\n','')
+        rlv[rlv_index, 0] = float(line[43:58])
+        rlv[rlv_index, 1] = float(line[58:71])
+        rlv[rlv_index, 2] = float(line[71:84])
       elif 'reciprocal lattice vectors' in line:
         writing_rlv = True
         rlv_index = -1
@@ -168,7 +168,7 @@ def read_kpath_info(plot_args):
     lines = kts_lines
   elif khi_is_line_mode:
     print("[info] KPOINTS is not in line mode, using KPATH.in...")
-    lines = khi_is_line_mode
+    lines = khi_lines
   else:
     print('[error] No line mode KPOINTS or KPATH.in was found...')
     sys.exit(1)
@@ -176,7 +176,8 @@ def read_kpath_info(plot_args):
   kpoints_quantity_each_kpath = int(lines[1].split()[0])
   hsk_quantity = 0 # High Symmetic Kpoint quantity
   for line in lines[1:]:
-    curr_line_ele_num = len(line.replace('\n','').split())
+    line = line.replace('#', ' ').replace('!',' ').replace('\n','')
+    curr_line_ele_num = len(line.split())
     if re.search('[0-9]', line) and \
        (curr_line_ele_num == 3 or curr_line_ele_num == 4):
       hsk_quantity += 1
@@ -185,11 +186,14 @@ def read_kpath_info(plot_args):
   kpath_symbol_list = [['#', '#'] for path in range(kpath_quantity)]
   kpath_vector_list = [[[], []] for path in range(kpath_quantity)]
   hsk_index = -1 # High Symmetic Kpoint index
+  if kpath_quantity == 0:
+    print('[error] Kpath Numbre = 0, pls check the KPOINTS file...')
+    sys.exit(1)
   for line in lines:
-    curr_line_ele_num = len(line.replace('\n','').split())
+    line = line.replace('#', ' ').replace('!',' ').replace('\n','')
+    curr_line_ele_num = len(line.split())
     if re.search('[0-9]', line) and \
        (curr_line_ele_num == 3 or curr_line_ele_num == 4):
-      line = line.replace('!',' ').replace('#',' ')
       line = line.split()
       hsk_index += 1
       hsk_pair_index = hsk_index % 2
