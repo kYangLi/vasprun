@@ -75,7 +75,7 @@ def paras_read_and_write(calc_obj_list):
   for env_para_name in env_para_name_list:
     print("[para] Set %-14s   ::   %s"
           %(env_para_name, str(env_para_list.get(env_para_name, None))))
-  print("[info] Exit this script to modify those parameters in vr.input.json .")
+  print("[info] Exit this script to modify those parameters in vr.input.st.json .")
   # Determine the nodes quantity
   for calc_obj in calc_obj_list:
     print("")

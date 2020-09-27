@@ -54,7 +54,7 @@ def paras_read_and_write(lib_obj_list):
   for env_para_name in env_para_name_list:
     print("[para] Set %-14s   ::   %s" 
           %(env_para_name, str(env_para_list[env_para_name])))
-  print("[info] Exit this script to modify those parameters in vr.input.json .")
+  print("[info] Exit this script to modify those parameters in vr.input.bm.json .")
   _ = input("Press <Enter> to continue...")
   # Loop for each lib obj 
   for lib_obj in lib_obj_list:
@@ -117,11 +117,11 @@ def paras_read_and_write(lib_obj_list):
       print("[input] Please input PBS walltime for this object. [ %d ]" 
             %default_pbs_walltime)
       pbs_walltime = input('> ')
-      if pbs_walltime.replace(' ','') == '':
+      if pbs_walltime.replace(' ', '') == '':
         pbs_walltime = default_pbs_walltime
       else:
         pbs_walltime = int(pbs_walltime)
-      if (not isinstance(pbs_walltime,int)) or (pbs_walltime <= 0):
+      if (not isinstance(pbs_walltime, int)) or (pbs_walltime <= 0):
         print("[error] Bad input...")
         sys.exit(1)
       print("[para] Set PBS walltime to: %d" %pbs_walltime)
@@ -147,7 +147,7 @@ def paras_read_and_write(lib_obj_list):
         sys.exit(1)
       print("[para] Set the number of OMP cpus: %d" %(vasp6_omp_cups))
       print("")
-    # Determine the plot energy window 
+    # Determine the plot energy window
     print("[input] Please input the plot energy window. [ %d, %d ]" 
           %(default_pew[0], default_pew[1]))
     pew = input('> ')
@@ -161,7 +161,7 @@ def paras_read_and_write(lib_obj_list):
       sys.exit(1)
     print("[para] Set plot window to: [%f, %f]" %(pew[0], pew[1]))
     print("")
-    # Determine the task list 
+    # Determine the task list
     print("[para] Set task list to: 'TTTT' ")
     print("")
     # Write paras into the lib vr.input.json
@@ -222,26 +222,27 @@ def post_process(lib_obj_list):
   # Create clean file
   print("[do] Create the FILE CLEAN script...")
   clean_file = [
-  '#!/bin/bash',
-  '#',
-  '',
-  'for obj in lib/public/*; do',
-  '  if [ -d "${obj}" ]; then',
-  '    cd ${obj}',
-  '    bash ./_CLEAN.sh',
-  '    cd ../../..',
-  '  fi',
-  'done',
-  'for obj in lib/private/*; do',
-  '  if [ -d "${obj}" ]; then',
-  '    cd ${obj}',
-  '    bash ./_CLEAN.sh',
-  '    cd ../../..',
-  '  fi',
-  'done',
-  'rm vasprun_path.json',
-  'rm _BM-KILLJOBS.sh',
-  'rm _BM-CLEAN.sh'
+      '#!/bin/bash',
+      '#',
+      '',
+      'for obj in lib/public/*; do',
+      '  if [ -d "${obj}" ]; then',
+      '    cd ${obj}',
+      '    bash ./_CLEAN.sh',
+      '    cd ../../..',
+      '  fi',
+      'done',
+      'for obj in lib/private/*; do',
+      '  if [ -d "${obj}" ]; then',
+      '    cd ${obj}',
+      '    bash ./_CLEAN.sh',
+      '    cd ../../..',
+      '  fi',
+      'done',
+      'rm vasprun_path.json',
+      'rm _BM-KILLJOBS.sh',
+      'rm _BM-SIMPLIFY.sh',
+      'rm _BM-CLEAN.sh'
   ] 
   with open('_BM-CLEAN.sh','w') as fwp:
     for line in clean_file:  
@@ -271,7 +272,7 @@ def post_process(lib_obj_list):
     simplify_file.append('')
     os.chdir('../../..')
   simplify_file.append('# Delete current script')
-  simplify_file.append('rm _BM-KILLJOBS.sh')
+  simplify_file.append('rm _BM-SIMPLIFY.sh')
   with open('_BM-SIMPLIFY.sh','w') as fwp:
     for line in simplify_file:  
       fwp.write(line + '\n')

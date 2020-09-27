@@ -1,0 +1,51 @@
+#==========================#
+#======= INCAR.BAND =======#
+#==========================#
+
+# +--------------------+
+# | System Basic Info. |
+# +--------------------+
+SYSTEM      =  Band
+ISTART      =  0
+NCORE       =  6
+LSCALAPACK  =  .FALSE.
+
+# +------------------+
+# | Ionic Relaxation |
+# +------------------+
+IBRION  =  -1
+NSW     =  0
+
+# +-----------------------+
+# | Electronic Relaxation |
+# +-----------------------+
+ENCUT    =  430
+PREC     =  Accurate
+EDIFF    =  1.0E-6
+ICHARG   =  11
+ISYM     =  2
+NELMIN   =  6
+NELM     =  200
+ISMEAR   =  0
+SIGMA    =  0.05
+LCHARG   =  .FALSE.
+LWAVE    =  .FALSE.
+LORBIT   =  11
+
+# +--------------------------+
+# | Colinear or Non-colinear |
+# +--------------------------+
+ISPIN    =  2 
+MAGMOM = 7*0  -5  5 -5  5 -5 -5 -5  5 -5  5 -5  5  5  5 -5 -5  5  5  5 -5  40*0
+
+# +----------------+
+# | L(S)DA+U Calc. |
+# +----------------+
+LDAU       =  .TRUE.
+LDAUTYPE   =  2
+LDAUL      =  -1 2 -1
+LDAUU      =  0.00 3.00 0.00
+LDAUJ      =  0.00 0.00 0.00
+LMAXMIX    =  4
+LDAUPRINT  =  2
+

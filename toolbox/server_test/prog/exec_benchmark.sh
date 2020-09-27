@@ -23,4 +23,4 @@ if [ -z "${VASPRUN}" ]; then
 fi
 
 echo "{\"vasprun\":\"${VASPRUN}\"}" > vasprun_path.json
-${PYTHON} ./submit_tests.py
+${PYTHON} ./prog/benchmark.py

@@ -2,6 +2,7 @@
 #
 
 declare -r PYTHON="$(which python 2>/dev/null)"
+declare -r VASPRUN="$(echo $(which vasprun 2>/dev/null | tail -1))"
 
 if [ -z "${PYTHON}" ]; then
   echo "[error] No program point to command 'python'!"
@@ -15,4 +16,11 @@ if [ -z "${python_version}" ]; then
   exit 1
 fi
 
-${PYTHON} ./report_result.py
+if [ -z "${VASPRUN}" ]; then
+  echo "[error] No program point to command 'vasprun'!"
+  echo "[tips] Please add vasprun to the 'PATH' ..."
+  exit 1
+fi
+
+echo "{\"vasprun\":\"${VASPRUN}\"}" > vasprun_path.json
+${PYTHON} ./prog/submit_tests.py
