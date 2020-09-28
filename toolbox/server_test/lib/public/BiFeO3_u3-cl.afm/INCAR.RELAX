@@ -1,0 +1,54 @@
+#===========================#
+#======= INCAR.RELAX =======#
+#===========================#
+
+# +--------------------+
+# | System Basic Info. |
+# +--------------------+
+SYSTEM      =  Relax
+ISTART      =  0
+NCORE       =  6
+LSCALAPACK  =  .FALSE.
+
+# +------------------+
+# | Ionic Relaxation |
+# +------------------+
+IBRION  =  2
+ISIF    =  3
+NSW     =  200
+POTIM   =  0.1
+EDIFFG  =  -1E-3
+
+# +-----------------------+
+# | Electronic Relaxation |
+# +-----------------------+
+ENCUT    =  520
+PREC     =  Normal
+EDIFF    =  1.0E-6
+ICHARG   =  2
+ISYM     =  2
+NELMIN   =  6
+NELM     =  150
+ISMEAR   =  0
+SIGMA    =  0.05
+LCHARG   =  .FALSE.
+LWAVE    =  .FALSE.
+LORBIT   =  11
+
+# +--------------------------+
+# | Colinear or Non-colinear |
+# +--------------------------+
+ISPIN    =  2
+MAGMOM  =  0  0  5 -5  6*0
+
+# +----------------+
+# | L(S)DA+U Calc. |
+# +----------------+
+LDAU       =  .TRUE.
+LDAUTYPE   =  2
+LDAUL      =  -1 2 -1
+LDAUU      =  0.00 3.00 0.00
+LDAUJ      =  0.00 0.00 0.00
+LMAXMIX    =  4
+LDAUPRINT  =  2
+

@@ -1,0 +1,39 @@
+{
+  "filename": {
+    "mpi_machinefile": "cores_list",
+    "relax_folder": "RELAX",
+    "ssc_folder": "SSC",
+    "band_folder": "BAND",
+    "dos_folder": "DOS",
+    "result_folder": "RESULT",
+    "band_res_folder": "band",
+    "dos_res_folder": "dos",
+    "result_json": "result.json",
+    "vasp_log": "VASP.log",
+    "vaspkit_log": "VASPKIT.log",
+    "band_fig": "band",
+    "dos_fig": "dos"
+  },
+  "calc_para": {
+    "intel_module": "ml intel/20u1",
+    "relax_vasp": "/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched_20u1/bin/vasp_ncl",
+    "ssc_vasp": "/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched_20u1/bin/vasp_ncl",
+    "vaspkit": "/home/liyang1/Software/CalcProg/VASP/Tools/VaspKit/vaspkit-1.12/bin/vaspkit",
+    "sys_type": "pbs",
+    "cores_per_node": 24,
+    "pbs_queue": "unset-pbs-queue",
+    "task_name": "bm.Graphene_cl",
+    "nodes_quantity": 1,
+    "vasp6_omp_cups": 1,
+    "pbs_walltime": 48,
+    "plot_energy_window": [
+      -6.0,
+      6.0
+    ],
+    "task_list": "TTTT"
+  },
+  "path_list": {
+    "vasprun_path": "/home/xyz/oceanli/codebase/vasp/vasprun",
+    "python_exec": "/home/xyz/anaconda3/bin/python"
+  }
+}

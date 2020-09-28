@@ -1,0 +1,18 @@
+{
+  "intel_module": "ml intel/20u1",
+  "relax_vasp": "/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched_20u1/bin/vasp_ncl",
+  "ssc_vasp": "/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched_20u1/bin/vasp_ncl",
+  "vaspkit": "/home/liyang1/Software/CalcProg/VASP/Tools/VaspKit/vaspkit-1.12/bin/vaspkit",
+  "sys_type": "pbs",
+  "cores_per_node": 24,
+  "pbs_queue": "unset-pbs-queue",
+  "task_name": "bm.Graphene_cl",
+  "nodes_quantity": 1,
+  "vasp6_omp_cups": 1,
+  "pbs_walltime": 48,
+  "plot_energy_window": [
+    -6.0,
+    6.0
+  ],
+  "task_list": "TTTT"
+}
