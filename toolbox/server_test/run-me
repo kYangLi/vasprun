@@ -2,31 +2,46 @@
 #
 
 default_task_index=$1
+if [ -z "${default_task_index}" ]; then
+  default_task_index=0
+fi
 
 echo ""
 echo "=== Welcome to VASPRUN SERVER TEST ==="
 echo ""
 echo "Please input the task index you need to execute."
-echo "[1] Run the lib benchmark."
-echo "[2] Run the test calculation."
-echo "[3] Report the test result."
-echo "[0] Quit."
+echo "[1]  Run the lib benchmark."
+echo "[1c] Check the lib benchmark."
+echo "[2]  Run the test calculation."
+echo "[2c] Check the test calculation."
+echo "[3]  Report the test result."
+echo "[0]  Quit."
 echo "Default: ${default_task_index}"
 read -p '> ' task_index
 if [ "${task_index}" != "1" ] && \
+   [ "${task_index}" != "1c" ] && \
    [ "${task_index}" != "2" ] && \
+   [ "${task_index}" != "2c" ] && \
    [ "${task_index}" != "3" ]; then 
   task_index=${default_task_index}
 fi
-
+echo ""
 case "${task_index}" in 
   "1")
     echo "[do] Benchmark..." 
     bash ./prog/exec_benchmark.sh
     ;;
+  "1c")
+    echo "[do] Checking benchmark..." 
+    bash ./prog/check_bm_progress.sh
+    ;;
   "2")
     echo "[do] Test calculation..." 
     bash ./prog/exec_submit_tests.sh
+    ;;
+  "2c")
+    echo "[do] Checking test calculation..." 
+    bash ./prog/check_st_progress.sh
     ;;
   "3")
     echo "[do] Report test result..." 

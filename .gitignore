@@ -1,7 +1,7 @@
 # system 
 .DS_Store
 plot/example/*
-tools/server_test/lib/private/*
+toolbox/server_test/lib/private/*
 .vscode
 
 # Byte-compiled / optimized / DLL files

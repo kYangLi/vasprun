@@ -52,11 +52,11 @@ def paras_read_and_write(lib_obj_list):
                         "vaspkit", "sys_type", "cores_per_node", 
                         "pbs_queue"]
   for env_para_name in env_para_name_list:
-    print("[para] Set %-14s   ::   %s" 
+    print("[para] Set %-14s   ::   %s"
           %(env_para_name, str(env_para_list[env_para_name])))
   print("[info] Exit this script to modify those parameters in vr.input.bm.json .")
   _ = input("Press <Enter> to continue...")
-  # Loop for each lib obj 
+  # Loop for each lib obj
   for lib_obj in lib_obj_list:
     print("")
     print("-------------------------------------------------------------------")
@@ -177,7 +177,7 @@ def paras_read_and_write(lib_obj_list):
     with open('vr.input.json', 'w') as jfwp:
       json.dump(calc_para_list, jfwp, indent=2)
     os.chdir('../../..')
-  return 0 
+  return 0
 
 
 def submit_jobs(lib_obj_list):
@@ -199,7 +199,7 @@ def submit_jobs(lib_obj_list):
                | %s > /dev/null' %(vasprun)
     _ = os.system(command)
     os.chdir('../../..')
-  return 0 
+  return 0
 
 
 def post_process(lib_obj_list):
@@ -242,15 +242,14 @@ def post_process(lib_obj_list):
       'rm vasprun_path.json',
       'rm _BM-KILLJOBS.sh',
       'rm _BM-SIMPLIFY.sh',
-      'rm _BM-CLEAN.sh'
-  ] 
-  with open('_BM-CLEAN.sh','w') as fwp:
-    for line in clean_file:  
+      'rm _BM-CLEAN.sh']
+  with open('_BM-CLEAN.sh', 'w') as fwp:
+    for line in clean_file:
       fwp.write(line + '\n')
   _ = os.system('chmod 740 _BM-CLEAN.sh')
   # Create simplify file
   print("[do] Create the FILE SIMPLYFY script...")
-  simplify_file = ['#!/bin/bash','#','']
+  simplify_file = ['#!/bin/bash', '#', '']
   for lib_obj in lib_obj_list:
     os.chdir(lib_obj)
     with open('vr.allpara.json') as jfrp:
@@ -264,6 +263,7 @@ def post_process(lib_obj_list):
     simplify_file.append('mv vr.input.json .tmp/')
     simplify_file.append('mv vr.allpara.json .tmp/')
     simplify_file.append('mv vr.expc_total_cores.json .tmp/')
+    simplify_file.append('cp _CLEAN.sh .tmp/')
     simplify_file.append('mv vasp_submit.nscc.sh .tmp/')
     simplify_file.append('( echo ) | ./_CLEAN.sh')
     simplify_file.append('mv .tmp/* .')
@@ -277,7 +277,7 @@ def post_process(lib_obj_list):
     for line in simplify_file:  
       fwp.write(line + '\n')
   _ = os.system('chmod 740 _BM-SIMPLIFY.sh')
-  return 0 
+  return 0
 
 
 def main():
@@ -289,7 +289,7 @@ def main():
   time.sleep(3)
   post_process(lib_obj_list)
   print("[done]")
-  return 0 
+  return 0
 
 
 if __name__ == "__main__":

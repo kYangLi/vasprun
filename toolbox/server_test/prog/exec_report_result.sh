@@ -15,4 +15,11 @@ if [ -z "${python_version}" ]; then
   exit 1
 fi
 
+echo "[do] Checking completion of benchmark..."
+bash ./prog/check_bm_progress.sh
+
+echo "[do] Checking completion of server test..."
+bash ./prog/check_st_progress.sh
+
+raed -p 'Press <Enter> to continue the report...'
 ${PYTHON} ./prog/report_result.py
