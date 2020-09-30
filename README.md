@@ -40,7 +40,7 @@ To enable this script, you need perpare the following files:
 - `KPOINTS.DOS`   (Optional)
 - `INCAR.DOS`     (Optional)
 
-### `vr.input.json`'
+### `vr.input.json`
 The `vr.input.json` contains the necessary parameters for a VASP task.
 Here is an example of the `vr.input.json`:
 ```json
