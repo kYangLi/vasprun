@@ -51,13 +51,13 @@ def mpirun(filename_list, calc_para_list, vasp):
   total_cores_number = nodes_quantity * cores_per_node
   intel_module = calc_para_list["intel_module"]
   if sys_type == 'pbs':
-    vasp6_omp_cups = calc_para_list["vasp6_omp_cups"]
+    vasp6_omp_cpus = calc_para_list["vasp6_omp_cpus"]
     mpi_machinefile = filename_list["mpi_machinefile"]
-    vasp_process_num = total_cores_number // vasp6_omp_cups
+    vasp_process_num = total_cores_number // vasp6_omp_cpus
     process_per_node = vasp_process_num // nodes_quantity
     command = "export OMP_NUM_THREADS=%d; \
                mpirun -machinefile ../%s -ppn %d -np %d %s >> %s" \
-               %(vasp6_omp_cups, mpi_machinefile, process_per_node,
+               %(vasp6_omp_cpus, mpi_machinefile, process_per_node,
                  vasp_process_num, vasp, vasp_log)
   elif sys_type == 'slurm':
     command = "srun %s >> %s" %(vasp, vasp_log)
@@ -67,12 +67,12 @@ def mpirun(filename_list, calc_para_list, vasp):
                                              vasp,
                                              vasp_log)
   elif sys_type == 'direct':
-    vasp6_omp_cups = calc_para_list["vasp6_omp_cups"]
-    vasp_process_num = total_cores_number // vasp6_omp_cups
+    vasp6_omp_cpus = calc_para_list["vasp6_omp_cpus"]
+    vasp_process_num = total_cores_number // vasp6_omp_cpus
     process_per_node = vasp_process_num // nodes_quantity
     command = "export OMP_NUM_THREADS=%d; \
                mpirun  -ppn %d -np %d %s >> %s" \
-               %(vasp6_omp_cups, process_per_node,
+               %(vasp6_omp_cpus, process_per_node,
                  vasp_process_num, vasp, vasp_log)
   start_time = time.time()
   _ = os.system("date >> %s" %vasp_log)

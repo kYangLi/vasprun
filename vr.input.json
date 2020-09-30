@@ -7,7 +7,7 @@
   "vaspkit":"/home/liyang1/Software/VASP/Tools/VaspKit/vaspkit-1.12/bin/vaspkit",
   "sys_type":"pbs",
   "cores_per_node":24,
-  "vasp6_omp_cups":1,
+  "vasp6_omp_cpus":1,
   "nodes_quantity":1,
   "pbs_walltime":48,
   "pbs_queue":"cmt",

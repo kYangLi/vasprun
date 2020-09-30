@@ -126,7 +126,7 @@ def get_calc_objs_infos():
     calc_nodes_quantity, calc_total_cores, calc_obj_res_json, \
       calc_obj_band_json, calc_obj_band_gap, calc_obj_dos_json \
       = get_res_data_file_location(obj_dir)
-    # File check 
+    # File check
     if (not os.path.isfile(lib_obj_res_json)) or \
        (not os.path.isfile(lib_obj_band_json)) or \
        (not os.path.isfile(lib_obj_dos_json)) or \
@@ -268,23 +268,28 @@ def band_plot(lib_band, calc_band, obj):
   # Plot the fermi energy surface with a dashed line
   plt.hlines(0.0, x_min, x_max, colors="black",
              linestyles="dashed", linewidth=0.7, zorder=3)
-  # Grid 
+  # Grid
   plt.grid(linestyle='--', axis="y", linewidth=0.5)
   # Plot the Band Structure
   x = lib_band["kline_coors"]
   if lib_band["spin_num"] == 1:
-    for band_index in range(len(lib_band["energys"])):
+    band_num = min(len(lib_band["energys"]), len(calc_band["energys"]))
+    for band_index in range(band_num):
       yl = lib_band["energys"][band_index]
       yc = calc_band["energys"][band_index]
       band_plot.plot(x, yl, '-', color='red', linewidth=1.2)
       band_plot.plot(x, yc, '--', color='black', linewidth=1.2)
   elif lib_band["spin_num"] == 2:
-    for band_index in range(len(lib_band["energys"]["up"])):
+    up_band_num = min(len(lib_band["energys"]["up"]),
+                      len(calc_band["energys"]["up"]))
+    dn_band_num = min(len(lib_band["energys"]["dn"]),
+                      len(calc_band["energys"]["dn"]))
+    for band_index in range(up_band_num):
       yl = lib_band["energys"]["up"][band_index]
       yc = calc_band["energys"]["up"][band_index]
       band_plot.plot(x, yl, '-', color='red', linewidth=1.2)
       band_plot.plot(x, yc, '--', color='black', linewidth=1.2)
-    for band_index in range(len(lib_band["energys"]["dn"])):
+    for band_index in range(dn_band_num):
       yl = lib_band["energys"]["dn"][band_index]
       yc = calc_band["energys"]["dn"][band_index]
       band_plot.plot(x, yl, '-', color='blue', linewidth=1.0)
@@ -300,26 +305,30 @@ def band_plot(lib_band, calc_band, obj):
 def calc_band_diff(lib_band, calc_band):
   band_diff = 0
   if lib_band["spin_num"] == 1:
-    total_energy_number = len(lib_band["energys"]) * len(lib_band["energys"][0])
-    for band_index in range(len(lib_band["energys"])):
+    band_num = min(len(lib_band["energys"]), len(calc_band["energys"]))
+    total_energy_number = band_num * len(lib_band["energys"][0])
+    for band_index in range(band_num):
       yl = lib_band["energys"][band_index]
       yc = calc_band["energys"][band_index]
       for index in range(len(yl)):
         band_diff += (yl[index]-yc[index])**2
   elif lib_band["spin_num"] == 2:
-    total_energy_number = len(lib_band["energys"]["up"]) * \
-                          len(lib_band["energys"]["up"][0])
-    for band_index in range(len(lib_band["energys"]["up"])):
+    up_band_num = min(len(lib_band["energys"]["up"]),
+                      len(calc_band["energys"]["up"]))
+    dn_band_num = min(len(lib_band["energys"]["dn"]),
+                      len(calc_band["energys"]["dn"]))
+    total_energy_number = up_band_num * len(lib_band["energys"]["up"][0]) + \
+                          dn_band_num * len(lib_band["energys"]["dn"][0])
+    for band_index in range(up_band_num):
       yl = lib_band["energys"]["up"][band_index]
       yc = calc_band["energys"]["up"][band_index]
       for index in range(len(yl)):
         band_diff += (yl[index]-yc[index])**2
-    for band_index in range(len(lib_band["energys"]["dn"])):
+    for band_index in range(dn_band_num):
       yl = lib_band["energys"]["dn"][band_index]
       yc = calc_band["energys"]["dn"][band_index]
       for index in range(len(yl)):
         band_diff += (yl[index]-yc[index])**2
-    band_diff = band_diff / 2
   band_diff = band_diff / total_energy_number
   band_diff = band_diff ** 0.5
   return band_diff
@@ -691,10 +700,12 @@ def report_with_txt(calc_objs_infos, calc_obj_list, civp):
     ' (eV)    | HOMO  || %17s | %17s | %17s '%(lib_band_homo, calc_band_homo, com_band_homo),
     '         | VBM   || %17s | %17s | %17s '%(lib_band_vbm, calc_band_vbm, com_band_vbm),
     '         | Diff. || %37s '%(com_band_diff),
-    '         | Plot  || Check `%s`. (Dashed line for benchmark)'%com_band_plot,
+    '         | Plot  || Check `%s`. '%com_band_plot,
+    '         |       || (Dashed line for benchmark)',
     '-----------------++-------------------+-------------------+-------------------',
     ' DOS     | Diff. || %37s '%(com_dos_diff),
-    '         | Plot  || Check `%s`. (Dashed line for benchmark)'%com_dos_plot,
+    '         | Plot  || Check `%s`. '%com_dos_plot,
+    '         |       || (Dashed line for benchmark)',
     '-----------------++-------------------+-------------------+-------------------',
     ' Mag.    | Relax || %17s | %17s | %17s '%(lib_mag_relax, calc_mag_relax, com_mag_relax),
     ' (eV)    | SSC   || %17s | %17s | %17s '%(lib_mag_ssc, calc_mag_ssc, com_mag_ssc),

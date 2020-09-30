@@ -41,7 +41,7 @@ def read_parameters():
   print("|     Parameters Read in     |")
   print("+----------------------------+")
   ## Init Parameters lists
-  filename_list = {"mpi_machinefile" : 'cores_list',
+  filename_list = {"mpi_machinefile" : 'cores-list',
                    "relax_folder"    : 'RELAX',
                    "ssc_folder"      : 'SSC',
                    "band_folder"     : 'BAND',
@@ -214,24 +214,24 @@ def read_parameters():
   # VASP6 OMP cpus number
   if (sys_type == 'pbs') or (sys_type == 'direct'):
     print("[do] Read in the VASP6 PBS OMP cups number...")
-    default_vasp6_omp_cups = calc_para_list.get("vasp6_omp_cups", 1)
-    if (not isinstance(default_vasp6_omp_cups, int)) or \
-       (default_vasp6_omp_cups <= 0):
-      default_vasp6_omp_cups = 1
+    default_vasp6_omp_cpus = calc_para_list.get("vasp6_omp_cpus", 1)
+    if (not isinstance(default_vasp6_omp_cpus, int)) or \
+       (default_vasp6_omp_cpus <= 0):
+      default_vasp6_omp_cpus = 1
     print("[input] Please input the number of vasp6 OMP cups. [ %d ]"
-          %(default_vasp6_omp_cups))
-    vasp6_omp_cups = input('> ')
-    if vasp6_omp_cups.replace(' ', '') == '':
-      vasp6_omp_cups = default_vasp6_omp_cups
+          %(default_vasp6_omp_cpus))
+    vasp6_omp_cpus = input('> ')
+    if vasp6_omp_cpus.replace(' ', '') == '':
+      vasp6_omp_cpus = default_vasp6_omp_cpus
     else:
-      vasp6_omp_cups = int(vasp6_omp_cups)
+      vasp6_omp_cpus = int(vasp6_omp_cpus)
     if (cores_per_node <= 0) or \
-      (cores_per_node//vasp6_omp_cups*vasp6_omp_cups != cores_per_node):
+      (cores_per_node//vasp6_omp_cpus*vasp6_omp_cpus != cores_per_node):
       print('[error] Invalid omp cups number...')
       print('[tips] The omp cups num must be a divisor of the cores per node.')
       sys.exit(1)
-    calc_para_list["vasp6_omp_cups"] = vasp6_omp_cups
-    print("[para] Set the number of OMP cpus: %d" %(vasp6_omp_cups))
+    calc_para_list["vasp6_omp_cpus"] = vasp6_omp_cpus
+    print("[para] Set the number of OMP cpus: %d" %(vasp6_omp_cpus))
     print("")
   # Nodes Quantity
   print("[do] Read in the nodes quantity...")

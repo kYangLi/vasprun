@@ -7,7 +7,7 @@
 # +--------------------+
 SYSTEM      =  SSC
 ISTART      =  0
-NCORE       =  6
+NCORE       =  4
 LSCALAPACK  =  .FALSE.
 
 # +------------------+

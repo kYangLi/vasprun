@@ -19,4 +19,3 @@ rm vasprun_path.json
 rm _BM-KILLJOBS.sh
 rm _BM-SIMPLIFY.sh
 rm _BM-CLEAN.sh
-
