@@ -1,7 +1,7 @@
-import os 
-import sys 
-import json 
-import time 
+import os
+import sys
+import json
+import time
 
 
 def paras_load():
@@ -26,7 +26,7 @@ def grep(tstr, file):
   targets = []
   for line in lines:
     if tstr in line:
-      line = line.replace('\n','')
+      line = line.replace('\n', '')
       targets.append(line)
   return targets
 
@@ -51,13 +51,14 @@ def mpirun(filename_list, calc_para_list, vasp):
   total_cores_number = nodes_quantity * cores_per_node
   intel_module = calc_para_list["intel_module"]
   if sys_type == 'pbs':
-    vasp6_omp_cpus = calc_para_list["vasp6_omp_cpus"]
+    openmp_cpus = calc_para_list["openmp_cpus"]
     mpi_machinefile = filename_list["mpi_machinefile"]
-    vasp_process_num = total_cores_number // vasp6_omp_cpus
+    vasp_process_num = total_cores_number // openmp_cpus
     process_per_node = vasp_process_num // nodes_quantity
-    command = "export OMP_NUM_THREADS=%d; \
-               mpirun -machinefile ../%s -ppn %d -np %d %s >> %s" \
-               %(vasp6_omp_cpus, mpi_machinefile, process_per_node,
+    command = "host=$(echo $(uniq ../%s) | sed 's/ /,/g'); \
+               export OMP_NUM_THREADS=%d; \
+               mpirun -host ${host} -ppn %d -np %d %s >> %s"\
+               %(mpi_machinefile, openmp_cpus, process_per_node,
                  vasp_process_num, vasp, vasp_log)
   elif sys_type == 'slurm':
     command = "srun %s >> %s" %(vasp, vasp_log)
@@ -67,13 +68,21 @@ def mpirun(filename_list, calc_para_list, vasp):
                                              vasp,
                                              vasp_log)
   elif sys_type == 'direct':
-    vasp6_omp_cpus = calc_para_list["vasp6_omp_cpus"]
-    vasp_process_num = total_cores_number // vasp6_omp_cpus
+    openmp_cpus = calc_para_list["openmp_cpus"]
+    mpi_machinefile = filename_list["mpi_machinefile"]
+    vasp_process_num = total_cores_number // openmp_cpus
     process_per_node = vasp_process_num // nodes_quantity
-    command = "export OMP_NUM_THREADS=%d; \
-               mpirun  -ppn %d -np %d %s >> %s" \
-               %(vasp6_omp_cpus, process_per_node,
-                 vasp_process_num, vasp, vasp_log)
+    if not os.path.isfile("../%s"):
+      command = "export OMP_NUM_THREADS=%d; \
+                 mpirun -ppn %d -np %d %s >> %s"\
+                 %(openmp_cpus, process_per_node,
+                   vasp_process_num, vasp, vasp_log)
+    else:
+      command = "host=$(echo $(uniq ../%s) | sed 's/ /,/g'); \
+                 export OMP_NUM_THREADS=%d; \
+                 mpirun -host ${host} -ppn %d -np %d %s >> %s"\
+                 %(mpi_machinefile, openmp_cpus, process_per_node,
+                   vasp_process_num, vasp, vasp_log)
   start_time = time.time()
   _ = os.system("date >> %s" %vasp_log)
   _ = os.system(intel_module + '; ' + command)
@@ -84,7 +93,7 @@ def mpirun(filename_list, calc_para_list, vasp):
 
 
 def res_collect(filename_list, time_spend, task_tag):
-  # Prepare 
+  # Prepare
   result_folder = filename_list["result_folder"]
   result_folder = '../%s' %result_folder
   if not os.path.isdir(result_folder):
@@ -97,46 +106,63 @@ def res_collect(filename_list, time_spend, task_tag):
   else:
     res_record = {"time"           : {},
                   "lattice_para"   : {},
-                  "fermi"          : {}, 
-                  "energy"         : {}, 
-                  "force_per_atom" : {}, 
-                  "total_mag"      : {}
-    }
+                  "fermi"          : {},
+                  "energy"         : {},
+                  "force_per_atom" : {},
+                  "total_mag"      : {}}
   # Lattice constant
   with open('OUTCAR') as frp:
     lines = frp.readlines()
   index = 0
+  lc_index = -6174
   for line in lines:
     if 'length of vectors' in line:
       lc_index = index
     index += 1
+  if lc_index == -6174:
+    print("[error] No 'length of vectors' was found in OUTCAR.")
+    sys.exit(1)
   lc_index += 1
   lcs = lines[lc_index].split()
   lcs = [float(val) for val in lcs[:3]]
   # Fermi level
-  fermi_levels = grep('fermi', 'OUTCAR')
-  fermi_level = fermi_levels[-1].split(':')[1].split('X')[0].replace(' ','')
-  fermi_level = float(fermi_level)
+  fermi_energys = grep('fermi', 'OUTCAR')
+  if fermi_energys == []:
+    print("[error] No 'fermi energy' was found in OUTCAR.")
+    sys.exit(1)
+  fermi_energy = fermi_energys[-1].split(':')[1].split('X')[0].replace(' ', '')
+  fermi_energy = float(fermi_energy)
   # Total energy
-  total_energys = grep ('sigma', 'OUTCAR')
-  total_energy = total_energys[-1].split('=')[2].replace(' ','')
+  total_energys = grep('sigma', 'OUTCAR')
+  if total_energys == []:
+    print("[error] No 'total energy' was found in OUTCAR.")
+    sys.exit(1)
+  total_energy = total_energys[-1].split('=')[2].replace(' ', '')
   total_energy = float(total_energy)
   # Total force
   with open('POSCAR') as frp:
     lines = frp.readlines()
   atom_num = lines[6]
-  atom_num = atom_num.replace('\n','')
+  atom_num = atom_num.replace('\n', '')
   atom_num = atom_num.split()
   atom_num = [int(val) for val in atom_num]
   atom_num = sum(atom_num)
   force_per_atoms = grep('total drift', 'OUTCAR')
+  if force_per_atoms == []:
+    print("[error] No 'total drift' was found in OUTCAR.")
+    sys.exit(1)
   force_per_atom = force_per_atoms[-1].split(':')[1].split()
   force_per_atom[0] = float(force_per_atom[0])/atom_num
   force_per_atom[1] = float(force_per_atom[1])/atom_num
   force_per_atom[2] = float(force_per_atom[2])/atom_num
   # Total magnet
   total_mags = grep('mag=', 'OSZICAR')
-  total_mag = total_mags[-1].split('=')[4].split()
+  if total_mags == []:
+    print("[warning] No 'mag' was found in OSZICAR, you are using ISPIN=1?")
+    print("[warning] Set mag to 0...")
+    total_mag = [0,]
+  else:
+    total_mag = total_mags[-1].split('=')[4].split()
   if len(total_mag) == 3:
     total_mag = (float(total_mag[0])**2 + \
                  float(total_mag[1])**2 + \
@@ -150,7 +176,7 @@ def res_collect(filename_list, time_spend, task_tag):
   res_record["time"]["total"] = total_time
   res_record["time"][task_tag] = time_spend
   res_record["lattice_para"][task_tag] = lcs
-  res_record["fermi"][task_tag] = fermi_level
+  res_record["fermi"][task_tag] = fermi_energy
   res_record["energy"][task_tag] = total_energy
   res_record["force_per_atom"][task_tag] = force_per_atom
   res_record["total_mag"][task_tag] = total_mag
@@ -170,10 +196,10 @@ def relax(filename_list, calc_para_list, task_index):
     print("[info] Folder %s already exist, skip." %relax_folder)
     command = "mv *-%s %s" %(relax_folder, index_relax_folder)
     _ = os.system(command)
-    # Recollect the result 
+    # Recollect the result
     os.chdir(index_relax_folder)
     with open("RUN_TIME") as frp:
-      time_spend = float(frp.readlines()[0].replace('\n',''))
+      time_spend = float(frp.readlines()[0].replace('\n', ''))
     res_collect(filename_list, time_spend, 'relax')
     os.chdir('..')
     task_index += 1
@@ -212,7 +238,7 @@ def ssc(filename_list, calc_para_list, task_index):
     # Recollect the result
     os.chdir(index_ssc_folder)
     with open("RUN_TIME") as frp:
-      time_spend = float(frp.readlines()[0].replace('\n',''))
+      time_spend = float(frp.readlines()[0].replace('\n', ''))
     res_collect(filename_list, time_spend, 'ssc')
     os.chdir('..')
     task_index += 1
@@ -238,7 +264,7 @@ def ssc(filename_list, calc_para_list, task_index):
 
 
 def band_plot_collect(filename_list, calc_para_list, path_list, mode):
-  ## Prepare 
+  ## Prepare
   curr_path = os.getcwd()
   result_folder = filename_list["result_folder"]
   result_folder = '../%s' %result_folder
@@ -258,19 +284,19 @@ def band_plot_collect(filename_list, calc_para_list, path_list, mode):
   else: #pbe mode
     vaspkit_band_code = '211'
     vaspkit_pband_code = '213'
-  # Total Band 
+  # Total Band
   command = '(echo %s; echo 0) | %s >> %s' \
             %(vaspkit_band_code, vaspkit, vaspkit_log)
   _ = os.system(command)
   # Projected Band
   command = '(echo %s) | %s >> %s' %(vaspkit_pband_code, vaspkit, vaspkit_log)
   _ = os.system(command)
-  # Copy Band file 
+  # Copy Band file
   _ = os.system('cp KLABELS %s' %band_res_folder)
   _ = os.system('cp BAND.dat %s' %band_res_folder)
   _ = os.system('cp PBAND_*.dat %s' %band_res_folder)
   _ = os.system('cp BAND_GAP %s' %band_res_folder)
-  # Plot Band 
+  # Plot Band
   vasprun_path = path_list["vasprun_path"]
   band_plot_script = "%s/plot/vaspkit_band.py" %vasprun_path
   python_exec = path_list["python_exec"]
@@ -320,11 +346,11 @@ def pbe_band(filename_list, calc_para_list, path_list, task_index):
 def get_kpath_ibzk():
   with open('KPATH.in') as frp:
     lines = frp.readlines()
-  kpoints_per_path = int(lines[1].replace(' ','').replace('\n',''))
+  kpoints_per_path = int(lines[1].replace(' ', '').replace('\n', ''))
   kpath_ibzk_origin_lines = lines[4:]
   kiols = []
   for kiol in kpath_ibzk_origin_lines:
-    if (kiol.replace(' ','').replace('\n','') == ''):
+    if kiol.replace(' ', '').replace('\n', '') == '':
       continue
     kiols.append(kiol)
   kpath_num = len(kiols)
@@ -341,12 +367,12 @@ def get_kpath_ibzk():
     hsk_end = kiols[hsk_end_index].split()[:3]
     hsk_end = [float(val) for val in hsk_end]
     hsk_array = [
-      hsk_end[0] - hsk_begin[0],
-      hsk_end[1] - hsk_begin[1],
-      hsk_end[2] - hsk_begin[2]
+        hsk_end[0] - hsk_begin[0],
+        hsk_end[1] - hsk_begin[1],
+        hsk_end[2] - hsk_begin[2]
     ]
     for index in range(kpoints_per_path):
-      kx = hsk_begin[0] + (index/(kpoints_per_path-1)) * hsk_array[0] 
+      kx = hsk_begin[0] + (index/(kpoints_per_path-1)) * hsk_array[0]
       ky = hsk_begin[1] + (index/(kpoints_per_path-1)) * hsk_array[1]
       kz = hsk_begin[2] + (index/(kpoints_per_path-1)) * hsk_array[2]
       kpath_ibzk_line = '%.8f  %.8f  %.8f  0' %(kx, ky, kz)
@@ -358,7 +384,7 @@ def combine_ssc_band_kpoints():
   with open('KPOINTS.SSC') as frp:
     lines = frp.readlines()
   try:
-    kgrid = lines[3].replace('\n','')
+    kgrid = lines[3].replace('\n', '')
     kgrid = kgrid.split()
     kgrid = [int(val) for val in kgrid[0:3]]
   except BaseException:
@@ -366,9 +392,9 @@ def combine_ssc_band_kpoints():
     print("[error] Please make sure the KPOINTS.SSC is under the grid mode.")
   with open('IBZKPT.SSC') as frp:
     lines = frp.readlines()
-  ssc_kp_num = int(lines[1].replace(' ','').replace('\n',''))
+  ssc_kp_num = int(lines[1].replace(' ', '').replace('\n', ''))
   ssc_ibzk_lines = lines[3:(ssc_kp_num+3)]
-  ssc_ibzk_lines = [val.replace('\n','') for val in ssc_ibzk_lines]
+  ssc_ibzk_lines = [val.replace('\n', '') for val in ssc_ibzk_lines]
   kpath_num, kpoints_per_path, kpath_ibzk_lines = get_kpath_ibzk()
   band_kp_num = kpath_num * kpoints_per_path
   total_kpoints_lines_num = ssc_kp_num + band_kp_num
@@ -403,9 +429,9 @@ def scan_band(filename_list, calc_para_list, path_list, task_index):
   _ = os.system('cp ../KPOINTS.SSC KPOINTS.SSC')
   ibzkpt = '../%d-%s/IBZKPT'%(task_index-1, ssc_folder)
   if not os.path.isfile(ibzkpt):
-      print("[error] No IBZKPT file was found in SSC folder...")
-      print("[error] Please make sure the KPOINTS.SSC is under the grid mode.")
-      sys.exit(1)
+    print("[error] No IBZKPT file was found in SSC folder...")
+    print("[error] Please make sure the KPOINTS.SSC is under the grid mode.")
+    sys.exit(1)
   _ = os.system('cp %s IBZKPT.SSC' %ibzkpt)
   combine_ssc_band_kpoints()
   wavecar = "../%d-%s/WAVECAR" %(task_index-1, ssc_folder)
@@ -442,10 +468,10 @@ def band(filename_list, calc_para_list, path_list, task_index):
     print("[info] Folder %s already exist, skip." %band_folder)
     command = "mv *-%s %s" %(band_folder, index_band_folder)
     _ = os.system(command)
-    # Recollect the result 
+    # Recollect the result
     os.chdir(index_band_folder)
     with open("RUN_TIME") as frp:
-      time_spend = float(frp.readlines()[0].replace('\n',''))
+      time_spend = float(frp.readlines()[0].replace('\n', ''))
     res_collect(filename_list, time_spend, 'band')
     band_plot_collect(filename_list, calc_para_list, path_list, band_mode)
     os.chdir('..')
@@ -455,17 +481,17 @@ def band(filename_list, calc_para_list, path_list, task_index):
   else:
     if band_mode == 'scan':
       print("[do] Calculate SCAN band ...")
-      task_index = scan_band(filename_list, calc_para_list, 
+      task_index = scan_band(filename_list, calc_para_list,
                              path_list, task_index)
     else:
       print("[do] Calculate PBE band ...")
-      task_index = pbe_band(filename_list, calc_para_list, 
+      task_index = pbe_band(filename_list, calc_para_list,
                             path_list, task_index)
   return task_index
 
 
 def dos_plot_collect(filename_list, calc_para_list, path_list):
-  ## Prepare 
+  ## Prepare
   curr_path = os.getcwd()
   result_folder = filename_list["result_folder"]
   result_folder = '../%s' %result_folder
@@ -485,18 +511,18 @@ def dos_plot_collect(filename_list, calc_para_list, path_list):
   # Projected DOS
   command = '(echo 113) | %s >> %s' %(vaspkit, vaspkit_log)
   _ = os.system(command)
-  # Copy DOS file 
+  # Copy DOS file
   _ = os.system('cp TDOS.dat %s' %dos_res_folder)
   _ = os.system('cp PDOS_*.dat %s' %dos_res_folder)
-  # Plot DOS 
+  # Plot DOS
   vasprun_path = path_list["vasprun_path"]
   python_exec = path_list["python_exec"]
   dos_plot_script = "%s/plot/vaspkit_dos.py" %vasprun_path
   dos_fig = filename_list["dos_fig"]
   pew = calc_para_list["plot_energy_window"]
   os.chdir(dos_res_folder)
-  command = "%s %s -n %s -u %f -d %f" %(python_exec, dos_plot_script, 
-                                        dos_fig,  pew[1], pew[0])
+  command = "%s %s -n %s -u %f -d %f" %(python_exec, dos_plot_script,
+                                        dos_fig, pew[1], pew[0])
   _ = os.system(command)
   _ = os.system("rm dos_plot.py 2>/dev/null")
   _ = os.system("ln -s %s dos_plot.py" %dos_plot_script)
@@ -516,7 +542,7 @@ def dos(filename_list, calc_para_list, path_list, task_index):
     _ = os.system(command)
     os.chdir(index_dos_folder)
     with open("RUN_TIME") as frp:
-      time_spend = float(frp.readlines()[0].replace('\n',''))
+      time_spend = float(frp.readlines()[0].replace('\n', ''))
     res_collect(filename_list, time_spend, 'dos')
     dos_plot_collect(filename_list, calc_para_list, path_list)
     os.chdir('..')
@@ -545,7 +571,7 @@ def dos(filename_list, calc_para_list, path_list, task_index):
 
 
 def main():
-  ## Prepare 
+  ## Prepare
   filename_list, calc_para_list, path_list = paras_load()
   task_index = 1
   _ = os.system("cp POSCAR POSCAR.INIT")

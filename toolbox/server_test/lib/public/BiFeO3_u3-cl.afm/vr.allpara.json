@@ -24,7 +24,7 @@
     "pbs_queue": "unset-pbs-queue",
     "task_name": "bm.BiFeO3_u3-cl.afm",
     "nodes_quantity": 1,
-    "vasp6_omp_cpus": 1,
+    "openmp_cpus": 1,
     "pbs_walltime": 48,
     "plot_energy_window": [
       -3.0,

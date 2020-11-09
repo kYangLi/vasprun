@@ -74,9 +74,10 @@ def read_parameters():
   # Task Name
   print("[do] Read in the task name...")
   curr_dirname = os.path.split(os.getcwd())[-1]
-  default_task_name = calc_para_list["task_name"]
-  if not default_task_name:
-    default_task_name = curr_dirname
+  # default_task_name = calc_para_list["task_name"]
+  # if not default_task_name:
+  #   default_task_name = curr_dirname
+  default_task_name = curr_dirname
   print("[input] Please input the task name. [ %s ]" %default_task_name)
   task_name = input('> ')
   if task_name.replace(' ','') == '':
@@ -211,27 +212,27 @@ def read_parameters():
   calc_para_list["cores_per_node"] = cores_per_node
   print("[para] Set the number of cores per node: %d" %(cores_per_node))
   print("")
-  # VASP6 OMP cpus number
+  # OPENMP cpus number
   if (sys_type == 'pbs') or (sys_type == 'direct'):
     print("[do] Read in the VASP6 PBS OMP cups number...")
-    default_vasp6_omp_cpus = calc_para_list.get("vasp6_omp_cpus", 1)
-    if (not isinstance(default_vasp6_omp_cpus, int)) or \
-       (default_vasp6_omp_cpus <= 0):
-      default_vasp6_omp_cpus = 1
+    default_openmp_cpus = calc_para_list.get("openmp_cpus", 1)
+    if (not isinstance(default_openmp_cpus, int)) or \
+       (default_openmp_cpus <= 0):
+      default_openmp_cpus = 1
     print("[input] Please input the number of vasp6 OMP cups. [ %d ]"
-          %(default_vasp6_omp_cpus))
-    vasp6_omp_cpus = input('> ')
-    if vasp6_omp_cpus.replace(' ', '') == '':
-      vasp6_omp_cpus = default_vasp6_omp_cpus
+          %(default_openmp_cpus))
+    openmp_cpus = input('> ')
+    if openmp_cpus.replace(' ', '') == '':
+      openmp_cpus = default_openmp_cpus
     else:
-      vasp6_omp_cpus = int(vasp6_omp_cpus)
+      openmp_cpus = int(openmp_cpus)
     if (cores_per_node <= 0) or \
-      (cores_per_node//vasp6_omp_cpus*vasp6_omp_cpus != cores_per_node):
+      (cores_per_node//openmp_cpus*openmp_cpus != cores_per_node):
       print('[error] Invalid omp cups number...')
       print('[tips] The omp cups num must be a divisor of the cores per node.')
       sys.exit(1)
-    calc_para_list["vasp6_omp_cpus"] = vasp6_omp_cpus
-    print("[para] Set the number of OMP cpus: %d" %(vasp6_omp_cpus))
+    calc_para_list["openmp_cpus"] = openmp_cpus
+    print("[para] Set the number of OMP cpus: %d" %(openmp_cpus))
     print("")
   # Nodes Quantity
   print("[do] Read in the nodes quantity...")
@@ -312,7 +313,7 @@ def read_parameters():
 
 
 def record_parameters(filename_list, calc_para_list, path_list):
-  all_para_list = {"filename"  : filename_list, 
+  all_para_list = {"filename"  : filename_list,
                    "calc_para" : calc_para_list,
                    "path_list" : path_list}
   with open('vr.input.json', 'w') as jfwp:
@@ -365,7 +366,7 @@ def file_check(calc_para_list):
   print("[done] POTCAR PASS.")
   print("")
   ## VASP && VASPKIT
-  #has been checked in parameters read in step, skip...
+  #-->has been checked in parameters read in step, skip...
   ## INCAR && KPOINTS
   print("[do] Checking INCAR & KPOINTS...")
   if task_list[0] == 'T':
@@ -447,7 +448,7 @@ def vasp_submit(filename_list, calc_para_list, path_list):
     script = script.replace('__nodes_quantity__', str(nodes_quantity))
     script = script.replace('__total_cores__', str(total_cores))
     if pbs_queue == 'unset-pbs-queue':
-      script = script.replace('#PBS -q', '##PBS -q')
+      script = script.replace('#SBATCH -p', '##SBATCH -p')
     else:
       script = script.replace('__pbs_queue__', pbs_queue)
     script = script.replace('__python_exec__', python_exec)

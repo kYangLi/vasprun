@@ -53,7 +53,7 @@ Here is an example of the `vr.input.json`:
   "vaspkit": "/home/liyang1/Software/CalcProg/VASP/Tools/VaspKit/vaspkit-1.12/bin/vaspkit",
   "sys_type": "pbs",
   "cores_per_node": 24,
-  "vasp6_omp_cpus": 1,
+  "openmp_cpus": 1,
   "pbs_queue": "unset-pbs-queue",
   "nodes_quantity": 2,
   "pbs_walltime": 48,
