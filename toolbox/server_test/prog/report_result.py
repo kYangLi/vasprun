@@ -139,7 +139,7 @@ def get_calc_objs_infos():
        (not os.path.isfile(calc_obj_band_gap)):
       print("[warning] %s calc not finished... skip..." %obj)
       continue
-    # Get band gap file data 
+    # Get band gap file data
     lib_bandgap_info = get_bandgap_info(lib_obj_band_gap)
     calc_bandgap_info = get_bandgap_info(calc_obj_band_gap)
     # Write the compare json data
@@ -152,11 +152,11 @@ def get_calc_objs_infos():
       "calc" : calc_res
     }
     calc_objs_infos[obj]["lib"]["cpus"] = {
-      "nodes" : lib_nodes_quantity, 
+      "nodes" : lib_nodes_quantity,
       "cores" : lib_total_cores
     }
     calc_objs_infos[obj]["calc"]["cpus"] = {
-      "nodes" : calc_nodes_quantity, 
+      "nodes" : calc_nodes_quantity,
       "cores" : calc_total_cores
     }
     calc_objs_infos[obj]["lib"]["bandgap"] = lib_bandgap_info
@@ -362,8 +362,8 @@ def dos_plot(lib_dos, calc_dos, obj):
                       'font.family': 'STIXGeneral',
                       'mathtext.fontset': 'stix'})
   # Set the spacing between the axis and labels
-  plt.rcParams['xtick.major.pad']='5'
-  plt.rcParams['ytick.major.pad']='5'
+  plt.rcParams['xtick.major.pad'] = '5'
+  plt.rcParams['ytick.major.pad'] = '5'
   # Set the ticks 'inside' the axis
   plt.rcParams['xtick.direction'] = 'in'
   plt.rcParams['ytick.direction'] = 'in'
@@ -380,24 +380,25 @@ def dos_plot(lib_dos, calc_dos, obj):
   # Plot the fermi energy surface with a dashed line
   plt.hlines(0.0, x_min, x_max, colors="black",
              linestyles="-", linewidth=0.7, zorder=3)
-  # Grid 
+  # Grid
   plt.grid(linestyle='--', linewidth=0.5)
   # Plot the dos Structure
-  x = lib_dos["energys"]
+  xl = lib_dos["energys"]
+  xc = calc_dos["energys"]
   if lib_dos["spin_num"] == 1:
     yl = lib_dos["doss"]
     yc = calc_dos["doss"]
-    dos_plot.plot(x, yl, '-', color='red', linewidth=1.2)
-    dos_plot.plot(x, yc, '--', color='black', linewidth=1.2)
+    dos_plot.plot(xl, yl, '-', color='red', linewidth=1.2)
+    dos_plot.plot(xc, yc, '--', color='black', linewidth=1.2)
   elif lib_dos["spin_num"] == 2:
     yl = lib_dos["doss"]["up"]
     yc = calc_dos["doss"]["up"]
-    dos_plot.plot(x, yl, '-', color='red', linewidth=1.2)
-    dos_plot.plot(x, yc, '--', color='black', linewidth=1.2)
+    dos_plot.plot(xl, yl, '-', color='red', linewidth=1.2)
+    dos_plot.plot(xc, yc, '--', color='black', linewidth=1.2)
     yl = lib_dos["doss"]["dn"]
     yc = calc_dos["doss"]["dn"]
-    dos_plot.plot(x, yl, '-', color='blue', linewidth=1.2)
-    dos_plot.plot(x, yc, '--', color='black', linewidth=1.2)
+    dos_plot.plot(xl, yl, '-', color='blue', linewidth=1.2)
+    dos_plot.plot(xc, yc, '--', color='black', linewidth=1.2)
   # Save the figure
   plot_format = 'png'
   plot_dpi = 300
@@ -440,7 +441,7 @@ def plot_compare_dos(calc_objs_infos, calc_obj_list):
       lib_dos = json.load(jfrp)
     with open(calc_dos_json) as jfrp:
       calc_dos = json.load(jfrp)
-    # DOS plot 
+    # DOS plot
     dos_plot_file = dos_plot(lib_dos, calc_dos, obj)
     calc_objs_infos[obj]["compare"]["dosplot"] = dos_plot_file
     # Compare dos in number

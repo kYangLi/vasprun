@@ -89,12 +89,14 @@ def main(argv):
       continue
     line = line.replace('\n','')
     dos_data_line = line.split()
-    energys.append(float(dos_data_line[0]))
-    if spin_num == 1:
-      doss.append(float(dos_data_line[1]))
-    elif spin_num == 2:
-      up_doss.append(float(dos_data_line[1]))
-      dn_doss.append(float(dos_data_line[2]))
+    curr_energy=float(dos_data_line[0])
+    if (curr_energy >= min_plot_energy) and (curr_energy <= max_plot_energy):
+      energys.append(curr_energy)
+      if spin_num == 1:
+        doss.append(float(dos_data_line[1]))
+      elif spin_num == 2:
+        up_doss.append(float(dos_data_line[1]))
+        dn_doss.append(float(dos_data_line[2]))
 
   # +----------+
   # | DOS Json |
