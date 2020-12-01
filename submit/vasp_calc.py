@@ -109,7 +109,15 @@ def res_collect(filename_list, time_spend, task_tag):
                   "fermi"          : {},
                   "energy"         : {},
                   "force_per_atom" : {},
-                  "total_mag"      : {}}
+                  "total_mag"      : {},
+                  "job_done"       : {}}
+  # Job done
+  job_done = grep('General timing and accounting informations for this job',
+                  'OUTCAR')
+  if job_done == []:
+    job_done = 'fail'
+  else:
+    job_done = 'done'
   # Lattice constant
   with open('OUTCAR') as frp:
     lines = frp.readlines()
@@ -180,6 +188,7 @@ def res_collect(filename_list, time_spend, task_tag):
   res_record["energy"][task_tag] = total_energy
   res_record["force_per_atom"][task_tag] = force_per_atom
   res_record["total_mag"][task_tag] = total_mag
+  res_record["job_done"][task_tag] = job_done
   with open(result_json, 'w') as jfwp:
     json.dump(res_record, jfwp, indent=2)
   with open('RUN_TIME', 'w') as fwp:
@@ -191,6 +200,7 @@ def relax(filename_list, calc_para_list, task_index):
   relax_folder = filename_list["relax_folder"]
   relax_vasp = calc_para_list["relax_vasp"]
   task_list = calc_para_list["task_list"]
+  task_name = calc_para_list["task_name"]
   index_relax_folder = "%d-%s" %(task_index, relax_folder)
   if file_exist('-' + relax_folder):
     print("[info] Folder %s already exist, skip." %relax_folder)
@@ -214,12 +224,17 @@ def relax(filename_list, calc_para_list, task_index):
     _ = os.system('ln -s ../POTCAR POTCAR')
     _ = os.system('cp ../POSCAR .')
     _ = os.system('cp ../KPOINTS.RELAX KPOINTS')
+    if os.path.isfile('../WAVECAR.RELAX'):
+      _ = os.system('cp ../WAVECAR.RELAX WAVECAR')
+    if os.path.isfile('../CHGCAR.RELAX'):
+      _ = os.system('cp ../CHGCAR.RELAX CHGCAR')
     # Job Submit
     time_spend = mpirun(filename_list, calc_para_list, relax_vasp)
     # Res. Collect
-    _ = os.system("cp CONTCAR ../POSCAR.RELAXED")
-    _ = os.system("cp CONTCAR ../POSCAR")
     res_collect(filename_list, time_spend, 'relax')
+    _ = os.system("cp CONTCAR ../POSCAR.RELAXED")
+    _ = os.system("cp CONTCAR ../RESULT/%s.vasp" %task_name)
+    _ = os.system("cp CONTCAR ../POSCAR")
     # Quit Dir.
     os.chdir('..')
     task_index += 1
@@ -253,6 +268,10 @@ def ssc(filename_list, calc_para_list, task_index):
     _ = os.system('ln -s ../POTCAR POTCAR')
     _ = os.system('cp ../POSCAR .')
     _ = os.system('cp ../KPOINTS.SSC KPOINTS')
+    if os.path.isfile('../WAVECAR.SSC'):
+      _ = os.system('cp ../WAVECAR.SSC WAVECAR')
+    if os.path.isfile('../CHGCAR.SSC'):
+      _ = os.system('cp ../CHGCAR.SSC CHGCAR')
     # Job Submit
     time_spend = mpirun(filename_list, calc_para_list, ssc_vasp)
     # Res. Collect
@@ -402,7 +421,9 @@ def combine_ssc_band_kpoints():
   kpath_kpoints_str = ''
   for _ in range(kpath_num):
     kpath_kpoints_str += '%d '%kpoints_per_path
-  paras_line = '-9999  %d %d %d  %d  -9999  %d  %d  %s'%(kgrid[0], kgrid[1], kgrid[2], ssc_kp_num, band_kp_num, kpath_num, kpath_kpoints_str)
+  paras_line = '-9999  %d %d %d  %d  -9999  %d  %d  %s' \
+    %(kgrid[0], kgrid[1], kgrid[2], ssc_kp_num, band_kp_num,
+      kpath_num, kpath_kpoints_str)
   with open('KPOINTS', 'w') as fwp:
     fwp.write('%s\n'%(paras_line))
     fwp.write('      %d\n'%(total_kpoints_lines_num))

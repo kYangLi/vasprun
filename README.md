@@ -6,9 +6,9 @@
 
 `Start Date` 2020.8.3
 
-`Last Update` 2019.9.28
+`Last Update` 2019.10.10
 
-`Version` 1.0.2
+`Version` 1.1.0
 
 ## Description
 
@@ -27,18 +27,21 @@ echo "export PATH=<vasprun>/<path>/:${PATH}" >> ~/.bashrc
 ## Input File
   
 To enable this script, you need perpare the following files:
-
-- `vr.input.json`
-- `POSCAR`
-- `POTCAR`
-- `KPOINTS.RELAX` (Optional)
-- `INCAR.RELAX`   (Optional)
-- `KPOINTS.SSC`   (Optional)
-- `INCAR.SSC`     (Optional)
-- `KPOINTS.BAND`  (Optional)
-- `INCAR.BAND`    (Optional)
-- `KPOINTS.DOS`   (Optional)
-- `INCAR.DOS`     (Optional)
+- `vr.input.json` ==> (Optional)
+- `POSCAR` =========> (Necessary)
+- `POTCAR` =========> (Necessary)
+- `KPOINTS.RELAX` ==> (Optional)
+- `INCAR.RELAX` ====> (Optional)
+- `WAVECAR.RELAX` ==> (Optional)
+- `CHGCAR.RELAX` ===> (Optional)
+- `KPOINTS.SSC` ====> (Optional)
+- `INCAR.SSC` ======> (Optional)
+- `WAVECAR.SSC` ====> (Optional)
+- `CHGCAR.SSC` =====> (Optional)
+- `KPOINTS.BAND` ===> (Optional)
+- `INCAR.BAND` =====> (Optional)
+- `KPOINTS.DOS` ====> (Optional)
+- `INCAR.DOS` ======> (Optional)
 
 ### `vr.input.json`
 The `vr.input.json` contains the necessary parameters for a VASP task.
@@ -72,6 +75,9 @@ VASP INCAR file, where the tag = `RELAX`, `SSC`, `BAND`, `DOS`
 
 ### `KPOINTS.[tag]`
 VASP KPOINTS file, where the tag = `RELAX`, `SSC`, `BAND`, `DOS`
+
+### `WAVECAR.*` `CHGCAR.*`
+Files for VASP continue calculation.
 
 ## Supported Task
 - VASP atomic structure relax
