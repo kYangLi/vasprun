@@ -89,8 +89,8 @@ Files for VASP continue calculation.
 ## Submit the Task
 After prepare the necessary file, just run `vasprun` in the calculation folder to submit the task.
 
-## Result Output
-The Calcualtion result can be found in the folder `RESULT`.
+## Calc. Result
+The calcualtion result can be found in the folder `RESULT`.
 
 ## Kill the Job
 ```bash

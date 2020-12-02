@@ -43,7 +43,7 @@ def paras_read_and_write(lib_obj_list):
   # Read in test parameters
   with open('vr.input.bm.json') as jfrp:
     env_para_list = json.load(jfrp)
-  # Report the mechine hostname
+  # Report the machine hostname
   env_para_list["hostname"] = socket.gethostname()
   with open('vr.input.bm.json', 'w') as jfwp:
     json.dump(env_para_list, jfwp, indent=2)

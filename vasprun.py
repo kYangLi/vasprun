@@ -184,7 +184,7 @@ def read_parameters():
   print("[do] Read in the system type...")
   sys_type = calc_para_list.get("sys_type")
   if sys_type not in sys_type_list:
-    print("[input] Please input the system type of your mechine.")
+    print("[input] Please input the system type of your machine.")
     print("[input] You can choice one from the list: ", sys_type_list)
     sys_type = input("> ")
     if sys_type not in sys_type_list:
@@ -214,7 +214,7 @@ def read_parameters():
   print("")
   # OPENMP cpus number
   if (sys_type == 'pbs') or (sys_type == 'direct'):
-    print("[do] Read in the VASP6 PBS OMP cups number...")
+    print("[do] Read in the OPENMP cups number...")
     default_openmp_cpus = calc_para_list.get("openmp_cpus", 1)
     if (not isinstance(default_openmp_cpus, int)) or \
        (default_openmp_cpus <= 0):
@@ -434,7 +434,7 @@ def vasp_submit(filename_list, calc_para_list, path_list):
       script = script.replace('__pbs_queue__', pbs_queue)
     script = script.replace('__python_exec__', python_exec)
     script = script.replace('__vasp_calc_script__', vasp_calc_script)
-    script = script.replace('__mpi_mechinefile__', mpi_machinefile)
+    script = script.replace('__mpi_machinefile__', mpi_machinefile)
     with open('vasp_submit.pbs.sh', 'w') as fwp:
       fwp.write(script)
     command = 'qsub vasp_submit.pbs.sh'
