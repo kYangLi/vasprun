@@ -63,10 +63,15 @@ def mpirun(filename_list, calc_para_list, vasp):
   elif sys_type == 'slurm':
     command = "srun %s >> %s" %(vasp, vasp_log)
   elif sys_type == 'nscc':
-    command = "yhrun -N %d -n %d %s >> %s" %(nodes_quantity,
-                                             total_cores_number,
-                                             vasp,
-                                             vasp_log)
+    job_queue = calc_para_list["job_queue"]
+    command = "yhrun -p %s -N %d -n %d %s >> %s" %(job_queue,
+                                                   nodes_quantity,
+                                                   total_cores_number,
+                                                   vasp, vasp_log)
+    if job_queue == 'unset-queue':
+      command = "yhrun -N %d -n %d %s >> %s" %(nodes_quantity,
+                                               total_cores_number,
+                                               vasp, vasp_log)
   elif sys_type == 'direct':
     openmp_cpus = calc_para_list["openmp_cpus"]
     mpi_machinefile = filename_list["mpi_machinefile"]
@@ -85,6 +90,7 @@ def mpirun(filename_list, calc_para_list, vasp):
                    vasp_process_num, vasp, vasp_log)
   start_time = time.time()
   _ = os.system("date >> %s" %vasp_log)
+  print(intel_module + '; ' + command)
   _ = os.system(intel_module + '; ' + command)
   _ = os.system("date >> %s" %vasp_log)
   end_time = time.time()

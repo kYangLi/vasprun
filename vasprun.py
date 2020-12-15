@@ -198,7 +198,7 @@ def read_parameters():
   default_cores_per_node = calc_para_list.get("cores_per_node", 1)
   if (not isinstance(default_cores_per_node, int)) or \
      (default_cores_per_node <= 0):
-     default_cores_per_node = 1
+    default_cores_per_node = 1
   print("[input] Please input the number of cores per node. [ %d ]"
         %default_cores_per_node)
   cores_per_node = input('> ')
@@ -239,7 +239,7 @@ def read_parameters():
   default_nodes_quantity = calc_para_list.get("nodes_quantity")
   if (not isinstance(default_nodes_quantity, int)) or \
      (default_nodes_quantity <= 0):
-     default_nodes_quantity = 1
+    default_nodes_quantity = 1
   print("[input] Please input the nodes quantity. [ %d ]"
         %default_nodes_quantity)
   nodes_quantity = input('> ')
@@ -273,19 +273,19 @@ def read_parameters():
     calc_para_list["pbs_walltime"] = pbs_walltime
     print("[para] Using PBS wall time : %s hour(s)." %pbs_walltime)
     print("")
-  # PBS Queue
-  if (sys_type == 'pbs') or (sys_type == 'slurm'):
-    print("[do] Read in the PBS queue...")
-    default_pbs_queue = calc_para_list.get("pbs_queue")
-    print("[input] Please input the PBS queue. [ %s ]" %default_pbs_queue)
-    pbs_queue = input("> ")
-    if pbs_queue.replace(' ','') == '':
-      pbs_queue = default_pbs_queue
-    if pbs_queue.replace(' ','') == '':
-      print("[error] Invalid PBS queue...")
+  # Job Queue(Partition)
+  if (sys_type == 'pbs') or (sys_type == 'slurm') or (sys_type == 'nscc'):
+    print("[do] Read in the job queue (partition)...")
+    default_job_queue = calc_para_list.get("job_queue")
+    print("[input] Please input the job queue (partition). [ %s ]" %default_job_queue)
+    job_queue = input("> ")
+    if job_queue.replace(' ','') == '':
+      job_queue = default_job_queue
+    if job_queue.replace(' ','') == '':
+      print("[error] Invalid job queue (partition)...")
       sys.exit(1)
-    calc_para_list["pbs_queue"] = pbs_queue
-    print("[para] You are in the queue: %s" %pbs_queue)
+    calc_para_list["job_queue"] = job_queue
+    print("[para] You are in the queue: %s" %job_queue)
     print("")
   # Plot Energy Window
   if task_list[2] == 'T' or task_list[3] == 'T':
@@ -419,7 +419,7 @@ def vasp_submit(filename_list, calc_para_list, path_list):
   # PBS system
   if sys_type == 'pbs':
     pbs_walltime = calc_para_list["pbs_walltime"]
-    pbs_queue = calc_para_list["pbs_queue"]
+    job_queue = calc_para_list["job_queue"]
     mpi_machinefile = filename_list["mpi_machinefile"]
     submit_file = "%s/submit/pbs.sh" %vasprun_path
     with open(submit_file) as frp:
@@ -428,10 +428,10 @@ def vasp_submit(filename_list, calc_para_list, path_list):
     script = script.replace('__nodes_quantity__', str(nodes_quantity))
     script = script.replace('__cores_per_node__', str(cores_per_node))
     script = script.replace('__pbs_walltime__', str(pbs_walltime))
-    if pbs_queue == 'unset-pbs-queue':
+    if job_queue == 'unset-queue':
       script = script.replace('#PBS -q', '##PBS -q')
     else:
-      script = script.replace('__pbs_queue__', pbs_queue)
+      script = script.replace('__job_queue__', job_queue)
     script = script.replace('__python_exec__', python_exec)
     script = script.replace('__vasp_calc_script__', vasp_calc_script)
     script = script.replace('__mpi_machinefile__', mpi_machinefile)
@@ -440,17 +440,17 @@ def vasp_submit(filename_list, calc_para_list, path_list):
     command = 'qsub vasp_submit.pbs.sh'
   # SLURM system
   elif sys_type == 'slurm':
-    pbs_queue = calc_para_list["pbs_queue"]
+    job_queue = calc_para_list["job_queue"]
     submit_file = "%s/submit/slurm.sh" %vasprun_path
     with open(submit_file) as frp:
       script = frp.read()
     script = script.replace('__task_name__', task_name)
     script = script.replace('__nodes_quantity__', str(nodes_quantity))
     script = script.replace('__total_cores__', str(total_cores))
-    if pbs_queue == 'unset-pbs-queue':
+    if job_queue == 'unset-queue':
       script = script.replace('#SBATCH -p', '##SBATCH -p')
     else:
-      script = script.replace('__pbs_queue__', pbs_queue)
+      script = script.replace('__job_queue__', job_queue)
     script = script.replace('__python_exec__', python_exec)
     script = script.replace('__vasp_calc_script__', vasp_calc_script)
     with open('vasp_submit.slurm.sh', 'w') as fwp:
@@ -458,17 +458,22 @@ def vasp_submit(filename_list, calc_para_list, path_list):
     command = 'sbatch vasp_submit.slurm.sh'
   # NSCC system
   elif sys_type == 'nscc':
+    job_queue = calc_para_list["job_queue"]
     submit_file = "%s/submit/nscc.sh" %vasprun_path
     with open(submit_file) as frp:
       script = frp.read()
     script = script.replace('__task_name__', task_name)
     script = script.replace('__nodes_quantity__', str(nodes_quantity))
     script = script.replace('__total_cores__', str(total_cores))
+    if job_queue == 'unset-queue':
+      script = script.replace('#SBATCH -p', '##SBATCH -p')
+    else:
+      script = script.replace('__job_queue__', job_queue)
     script = script.replace('__python_exec__', python_exec)
     script = script.replace('__vasp_calc_script__', vasp_calc_script)
     with open('vasp_submit.nscc.sh', 'w') as fwp:
       fwp.write(script)
-    command = 'yhbatch vasp_submit.nscc.sh'
+    command = "yhbatch vasp_submit.nscc.sh"
   elif sys_type == 'direct':
     submit_file = "%s/submit/direct.sh" %vasprun_path
     with open(submit_file) as frp:

@@ -71,7 +71,7 @@ def paras_read_and_write(calc_obj_list):
   # Define the env name
   env_para_name_list = ["intel_module", "relax_vasp", "ssc_vasp",
                         "vaspkit", "sys_type", "cores_per_node",
-                        "pbs_queue"]
+                        "job_queue"]
   for env_para_name in env_para_name_list:
     print("[para] Set %-14s   ::   %s"
           %(env_para_name, str(env_para_list.get(env_para_name, None))))
@@ -116,7 +116,7 @@ def paras_read_and_write(calc_obj_list):
       round(expc_total_cores / env_para_list["cores_per_node"])
     if (not isinstance(default_nodes_quantity, int)) or \
        (default_nodes_quantity <= 0):
-     default_nodes_quantity = 1
+      default_nodes_quantity = 1
     print("[input] Please input the nodes quantity. [ %d ]"
           %default_nodes_quantity)
     nodes_quantity = input('> ')
@@ -162,7 +162,7 @@ def paras_read_and_write(calc_obj_list):
     with open('vr.input.json', 'w') as jfwp:
       json.dump(calc_para_list, jfwp, indent=2)
     os.chdir('../..')
-  return 0 
+  return 0
 
 
 def submit_jobs(calc_obj_list):
@@ -183,7 +183,7 @@ def submit_jobs(calc_obj_list):
                | %s > /dev/null' %(vasprun)
     _ = os.system(command)
     os.chdir('../..')
-  return 0 
+  return 0
 
 
 def post_process(calc_obj_list):

@@ -50,7 +50,7 @@ def paras_read_and_write(lib_obj_list):
   # Define the env list
   env_para_name_list = ["intel_module", "relax_vasp", "ssc_vasp", 
                         "vaspkit", "sys_type", "cores_per_node", 
-                        "pbs_queue"]
+                        "job_queue"]
   for env_para_name in env_para_name_list:
     print("[para] Set %-14s   ::   %s"
           %(env_para_name, str(env_para_list[env_para_name])))

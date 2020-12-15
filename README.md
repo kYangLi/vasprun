@@ -57,7 +57,7 @@ Here is an example of the `vr.input.json`:
   "sys_type": "pbs",
   "cores_per_node": 24,
   "openmp_cpus": 1,
-  "pbs_queue": "unset-pbs-queue",
+  "job_queue": "unset-queue",
   "nodes_quantity": 2,
   "pbs_walltime": 48,
   "plot_energy_window": [-2.0, 2.0]

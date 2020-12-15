@@ -21,7 +21,7 @@
     "vaspkit": "/home/liyang1/Software/CalcProg/VASP/Tools/VaspKit/vaspkit-1.12/bin/vaspkit",
     "sys_type": "pbs",
     "cores_per_node": 24,
-    "pbs_queue": "unset-pbs-queue",
+    "job_queue": "unset-queue",
     "task_name": "bm.BiFeO3_u3-cl.afm",
     "nodes_quantity": 1,
     "openmp_cpus": 1,
