@@ -12,13 +12,13 @@
 # Usage: python3.7 dos_plot.py -u <max_energy> -d <min_energy>
 #
 
+import json
 import os
 import sys
 import getopt
-import re
 import matplotlib.pyplot as plt
 plt.switch_backend('agg') # For GUI less server
-import json
+
 
 def grep(tstr, file):
   with open(file) as frp:
@@ -40,46 +40,46 @@ def main(argv):
   plot_dpi = 400
   plot_filename = 'DOS'
   try:
-      opts, args = getopt.getopt(argv, "hd:u:f:r:n:",
-                                  ["min=", "max=", "format=", 
-                                  "dpi=","name="])
+    opts, args = getopt.getopt(argv, "hd:u:f:r:n:",
+                               ["min=", "max=", "format=",
+                                "dpi=", "name="])
   except getopt.GetoptError:
-      print('dos_plot.py -n <filename> -d <E_min> -u <E_max> -f <PlotFormat>')
-      sys.exit(2)
+    print('dos_plot.py -n <filename> -d <E_min> -u <E_max> -f <PlotFormat>')
+    sys.exit(2)
   del args
   for opt, arg in opts:
-      if opt == '-h':
-          print('dos_plot.py -n <filename> -d <E_min> -u <E_max> -f <PlotFormat>')
-          sys.exit()
-      elif opt in ("-d", "--min"):
-          min_plot_energy = float(arg)
-      elif opt in ("-u", "--max"):
-          max_plot_energy = float(arg)
-      elif opt in ("-f", "--format"):
-          plot_format = arg
-      elif opt in ("-r", "--dpi"):
-          plot_dpi = int(arg.split(".")[0])
-      elif opt in ("-n", "--name"):
-          plot_filename = arg
+    if opt == '-h':
+      print('dos_plot.py -n <filename> -d <E_min> -u <E_max> -f <PlotFormat>')
+      sys.exit()
+    elif opt in ("-d", "--min"):
+      min_plot_energy = float(arg)
+    elif opt in ("-u", "--max"):
+      max_plot_energy = float(arg)
+    elif opt in ("-f", "--format"):
+      plot_format = arg
+    elif opt in ("-r", "--dpi"):
+      plot_dpi = int(arg.split(".")[0])
+    elif opt in ("-n", "--name"):
+      plot_filename = arg
 
   # +-------------------+
   # | DOS Data Read In |
   # +-------------------+
   ## Check the existance of the DOS Data
   if not os.path.isfile('TDOS.dat'):
-      print("[error] TDOS.dat not found..")
-      sys.exit(1)
+    print("[error] TDOS.dat not found..")
+    sys.exit(1)
   ## Spin Number
   spin_res = grep('TDOS-DOWN', 'TDOS.dat')
   if spin_res == []:
-      spin_num = 1
+    spin_num = 1
   else:
-      spin_num = 2
+    spin_num = 2
   # DOS data
   with open('TDOS.dat') as frp:
     lines = frp.readlines()
   energys = []
-  if spin_num == 1: 
+  if spin_num == 1:
     doss = []
   elif spin_num == 2:
     up_doss = []
@@ -87,9 +87,9 @@ def main(argv):
   for line in lines:
     if '#' in line:
       continue
-    line = line.replace('\n','')
+    line = line.replace('\n', '')
     dos_data_line = line.split()
-    curr_energy=float(dos_data_line[0])
+    curr_energy = float(dos_data_line[0])
     if (curr_energy >= min_plot_energy) and (curr_energy <= max_plot_energy):
       energys.append(curr_energy)
       if spin_num == 1:
@@ -109,8 +109,8 @@ def main(argv):
     data["doss"] = doss
   if spin_num == 2:
     data["doss"] = {
-      "up" : up_doss,
-      "dn" : dn_doss
+        "up" : up_doss,
+        "dn" : dn_doss
     }
   json_file = plot_filename + '.json'
   with open(json_file, 'w') as jfwp:
@@ -122,11 +122,11 @@ def main(argv):
   ## Design the Figure
   # Set the Fonts
   plt.rcParams.update({'font.size': 14,
-                      'font.family': 'STIXGeneral',
-                      'mathtext.fontset': 'stix'})
+                       'font.family': 'STIXGeneral',
+                       'mathtext.fontset': 'stix'})
   # Set the spacing between the axis and labels
-  plt.rcParams['xtick.major.pad']='5'
-  plt.rcParams['ytick.major.pad']='5'
+  plt.rcParams['xtick.major.pad'] = '5'
+  plt.rcParams['ytick.major.pad'] = '5'
   # Set the ticks 'inside' the axis
   plt.rcParams['xtick.direction'] = 'in'
   plt.rcParams['ytick.direction'] = 'in'
@@ -143,7 +143,7 @@ def main(argv):
   # Plot the fermi energy surface with a dashed line
   plt.hlines(0.0, x_min, x_max, colors="black",
              linestyles="-", linewidth=0.7, zorder=3)
-  # Grid 
+  # Grid
   plt.grid(linestyle='--', linewidth=0.5)
   # Plot the dos Structure
   if spin_num == 1:
@@ -160,6 +160,6 @@ def main(argv):
   # Save the figure
   plot_dos_file_name = plot_filename + '.' + plot_format
   plt.savefig(plot_dos_file_name, format=plot_format, dpi=plot_dpi)
-  
+
 if __name__ == "__main__":
   main(sys.argv[1:])

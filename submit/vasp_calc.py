@@ -1,10 +1,13 @@
+'''vasp calculate script'''
 import os
 import sys
 import json
 import time
+import argparse
 
 
 def paras_load():
+  '''parameters load'''
   with open("vr.allpara.json") as jfrp:
     all_para_list = json.load(jfrp)
     filename_list = all_para_list["filename"]
@@ -14,6 +17,7 @@ def paras_load():
 
 
 def file_exist(part_of_filename):
+  '''check if file exist'''
   for filename in os.listdir('.'):
     if part_of_filename in filename:
       return True
@@ -21,6 +25,7 @@ def file_exist(part_of_filename):
 
 
 def grep(tstr, file):
+  '''grep'''
   with open(file) as frp:
     lines = frp.readlines()
   targets = []
@@ -32,6 +37,7 @@ def grep(tstr, file):
 
 
 def grep_index(tstr, file):
+  '''grep -n'''
   with open(file) as frp:
     lines = frp.readlines()
   targets_line_index = []
@@ -43,55 +49,24 @@ def grep_index(tstr, file):
   return targets_line_index
 
 
-def mpirun(filename_list, calc_para_list, vasp):
-  vasp_log = filename_list["vasp_log"]
-  sys_type = calc_para_list["sys_type"]
-  nodes_quantity = calc_para_list["nodes_quantity"]
-  cores_per_node = calc_para_list["cores_per_node"]
-  total_cores_number = nodes_quantity * cores_per_node
-  intel_module = calc_para_list["intel_module"]
-  if sys_type == 'pbs':
-    openmp_cpus = calc_para_list["openmp_cpus"]
-    mpi_machinefile = filename_list["mpi_machinefile"]
-    vasp_process_num = total_cores_number // openmp_cpus
-    process_per_node = vasp_process_num // nodes_quantity
-    command = "host=$(echo $(uniq ../%s) | sed 's/ /,/g'); \
-               export OMP_NUM_THREADS=%d; \
-               mpirun -host ${host} -ppn %d -np %d %s >> %s"\
-               %(mpi_machinefile, openmp_cpus, process_per_node,
-                 vasp_process_num, vasp, vasp_log)
-  elif sys_type == 'slurm':
-    command = "srun %s >> %s" %(vasp, vasp_log)
-  elif sys_type == 'nscc':
-    job_queue = calc_para_list["job_queue"]
-    command = "yhrun -p %s -N %d -n %d %s >> %s" %(job_queue,
-                                                   nodes_quantity,
-                                                   total_cores_number,
-                                                   vasp, vasp_log)
-    if job_queue == 'unset-queue':
-      command = "yhrun -N %d -n %d %s >> %s" %(nodes_quantity,
-                                               total_cores_number,
-                                               vasp, vasp_log)
-  elif sys_type == 'direct':
-    openmp_cpus = calc_para_list["openmp_cpus"]
-    mpi_machinefile = filename_list["mpi_machinefile"]
-    vasp_process_num = total_cores_number // openmp_cpus
-    process_per_node = vasp_process_num // nodes_quantity
-    if not os.path.isfile("../%s"):
-      command = "export OMP_NUM_THREADS=%d; \
-                 mpirun -ppn %d -np %d %s >> %s"\
-                 %(openmp_cpus, process_per_node,
-                   vasp_process_num, vasp, vasp_log)
-    else:
-      command = "host=$(echo $(uniq ../%s) | sed 's/ /,/g'); \
-                 export OMP_NUM_THREADS=%d; \
-                 mpirun -host ${host} -ppn %d -np %d %s >> %s"\
-                 %(mpi_machinefile, openmp_cpus, process_per_node,
-                   vasp_process_num, vasp, vasp_log)
+def mpirun_command_read_in():
+  '''Read in the command line mpirun command'''
+  parser = argparse.ArgumentParser("read in mpirun from command line")
+  parser.add_argument('-c', '--mpirun', dest='mpirun_command',
+                      default='mpirun', type=str,
+                      help='mpirun command')
+  args = parser.parse_args()
+  return args.mpirun_command
+
+
+def mpirun(vasp_log):
+  '''mpirun'''
+  mpirun_command = mpirun_command_read_in()
   start_time = time.time()
   _ = os.system("date >> %s" %vasp_log)
-  print(intel_module + '; ' + command)
-  _ = os.system(intel_module + '; ' + command)
+  mpirun_command += " >> %s" %vasp_log
+  print(mpirun_command)
+  _ = os.system(mpirun_command)
   _ = os.system("date >> %s" %vasp_log)
   end_time = time.time()
   time_spend = end_time - start_time
@@ -99,6 +74,7 @@ def mpirun(filename_list, calc_para_list, vasp):
 
 
 def res_collect(filename_list, time_spend, task_tag):
+  '''result collect'''
   # Prepare
   result_folder = filename_list["result_folder"]
   result_folder = '../%s' %result_folder
@@ -204,7 +180,7 @@ def res_collect(filename_list, time_spend, task_tag):
 
 def relax(filename_list, calc_para_list, task_index):
   relax_folder = filename_list["relax_folder"]
-  relax_vasp = calc_para_list["relax_vasp"]
+  vasp_log = filename_list["vasp_log"]
   task_list = calc_para_list["task_list"]
   task_name = calc_para_list["task_name"]
   index_relax_folder = "%d-%s" %(task_index, relax_folder)
@@ -217,6 +193,7 @@ def relax(filename_list, calc_para_list, task_index):
     with open("RUN_TIME") as frp:
       time_spend = float(frp.readlines()[0].replace('\n', ''))
     res_collect(filename_list, time_spend, 'relax')
+    _ = os.system("cp CONTCAR ../RESULT/%s.vasp" %task_name)
     os.chdir('..')
     task_index += 1
   elif task_list[0] != 'T':
@@ -235,7 +212,7 @@ def relax(filename_list, calc_para_list, task_index):
     if os.path.isfile('../CHGCAR.RELAX'):
       _ = os.system('cp ../CHGCAR.RELAX CHGCAR')
     # Job Submit
-    time_spend = mpirun(filename_list, calc_para_list, relax_vasp)
+    time_spend = mpirun(vasp_log)
     # Res. Collect
     res_collect(filename_list, time_spend, 'relax')
     _ = os.system("cp CONTCAR ../POSCAR.RELAXED")
@@ -249,7 +226,7 @@ def relax(filename_list, calc_para_list, task_index):
 
 def ssc(filename_list, calc_para_list, task_index):
   ssc_folder = filename_list["ssc_folder"]
-  ssc_vasp = calc_para_list["ssc_vasp"]
+  vasp_log = filename_list["vasp_log"]
   task_list = calc_para_list["task_list"]
   index_ssc_folder = "%d-%s" %(task_index, ssc_folder)
   if file_exist('-' + ssc_folder):
@@ -279,7 +256,7 @@ def ssc(filename_list, calc_para_list, task_index):
     if os.path.isfile('../CHGCAR.SSC'):
       _ = os.system('cp ../CHGCAR.SSC CHGCAR')
     # Job Submit
-    time_spend = mpirun(filename_list, calc_para_list, ssc_vasp)
+    time_spend = mpirun(vasp_log)
     # Res. Collect
     res_collect(filename_list, time_spend, 'ssc')
     # Quit Dir.
@@ -340,7 +317,7 @@ def band_plot_collect(filename_list, calc_para_list, path_list, mode):
 def pbe_band(filename_list, calc_para_list, path_list, task_index):
   band_folder = filename_list["band_folder"]
   ssc_folder = filename_list["ssc_folder"]
-  band_vasp = calc_para_list["ssc_vasp"]
+  vasp_log = filename_list["vasp_log"]
   index_band_folder = "%d-%s" %(task_index, band_folder)
   # File prepare
   os.mkdir(index_band_folder)
@@ -356,7 +333,7 @@ def pbe_band(filename_list, calc_para_list, path_list, task_index):
   _ = os.system('ln -s %s CHGCAR' %chgcar)
   _ = os.system('ln -s ../*-%s/DOSCAR DOSCAR.SSC' %ssc_folder)
   # Job Submit
-  time_spend = mpirun(filename_list, calc_para_list, band_vasp)
+  time_spend = mpirun(vasp_log)
   # Res. Collect
   res_collect(filename_list, time_spend, 'band')
   _ = os.system('mv DOSCAR DOSCAR.BAND')
@@ -444,7 +421,7 @@ def combine_ssc_band_kpoints():
 def scan_band(filename_list, calc_para_list, path_list, task_index):
   band_folder = filename_list["band_folder"]
   ssc_folder = filename_list["ssc_folder"]
-  band_vasp = calc_para_list["ssc_vasp"]
+  vasp_log = filename_list["vasp_log"]
   index_band_folder = "%d-%s" %(task_index, band_folder)
   # File prepare
   os.mkdir(index_band_folder)
@@ -467,7 +444,7 @@ def scan_band(filename_list, calc_para_list, path_list, task_index):
     sys.exit(1)
   _ = os.system('ln -s %s WAVECAR' %wavecar)
   # Job Submit
-  time_spend = mpirun(filename_list, calc_para_list, band_vasp)
+  time_spend = mpirun(vasp_log)
   # Res. Collect
   res_collect(filename_list, time_spend, 'band')
   band_plot_collect(filename_list, calc_para_list, path_list, 'scan')
@@ -560,7 +537,7 @@ def dos_plot_collect(filename_list, calc_para_list, path_list):
 def dos(filename_list, calc_para_list, path_list, task_index):
   dos_folder = filename_list["dos_folder"]
   ssc_folder = filename_list["ssc_folder"]
-  dos_vasp = calc_para_list["ssc_vasp"]
+  vasp_log = filename_list["vasp_log"]
   task_list = calc_para_list["task_list"]
   index_dos_folder = "%d-%s" %(task_index, dos_folder)
   if file_exist('-' + dos_folder):
@@ -587,7 +564,7 @@ def dos(filename_list, calc_para_list, path_list, task_index):
     _ = os.system('cp ../KPOINTS.DOS KPOINTS')
     _ = os.system('ln -s ../*-%s/CHGCAR CHGCAR' %ssc_folder)
     # Job Submit
-    time_spend = mpirun(filename_list, calc_para_list, dos_vasp)
+    time_spend = mpirun(vasp_log)
     # Res. Collect
     res_collect(filename_list, time_spend, 'dos')
     dos_plot_collect(filename_list, calc_para_list, path_list)

@@ -37,16 +37,12 @@ def read_civp_info():
     st_calc_paras = json.load(jfrp)
   bm_server = bm_calc_paras["hostname"]
   st_server = st_calc_paras["hostname"]
-  bm_relax_vasp = bm_calc_paras["relax_vasp"]
-  bm_ssc_vasp = bm_calc_paras["ssc_vasp"]
-  st_relax_vasp = st_calc_paras["relax_vasp"]
-  st_ssc_vasp = st_calc_paras["ssc_vasp"]
-  civp = {"bm_server"     : bm_server,
-          "st_server"     : st_server,
-          "bm_relax_vasp" : bm_relax_vasp,
-          "bm_ssc_vasp"   : bm_ssc_vasp,
-          "st_relax_vasp" : st_relax_vasp,
-          "st_ssc_vasp"   : st_ssc_vasp}
+  bm_vasp = bm_calc_paras["vasp_exec"]
+  st_vasp = st_calc_paras["vasp_exec"]
+  civp = {"bm_server" : bm_server,
+          "st_server" : st_server,
+          "bm_vasp"   : bm_vasp,
+          "st_vasp"   : st_vasp}
   return civp
 
 def get_res_data_file_location(obj_dir):
@@ -58,6 +54,7 @@ def get_res_data_file_location(obj_dir):
   nodes_quantity = calc_para_list["nodes_quantity"]
   cores_per_node = calc_para_list["cores_per_node"]
   total_cores = nodes_quantity * cores_per_node
+  omp_cores = calc_para_list["openmp_cores"]
   result_folder = filename["result_folder"]
   result_json = filename["result_json"]
   band_res_folder = filename["band_res_folder"]
@@ -70,7 +67,7 @@ def get_res_data_file_location(obj_dir):
   obj_band_json = os.path.join(obj_band_dir, band_fig+'.json')
   obj_band_gap = os.path.join(obj_band_dir, 'BAND_GAP')
   obj_dos_json = os.path.join(obj_res_dir, dos_res_folder, dos_fig+'.json')
-  return nodes_quantity, total_cores, obj_res_json, \
+  return nodes_quantity, total_cores, omp_cores, obj_res_json, \
          obj_band_json, obj_band_gap, obj_dos_json
 
 def get_bandgap_info(file):
@@ -98,6 +95,7 @@ def get_calc_objs_infos():
   calc_objs_infos = {}
   # Collect the infos
   calc_obj_list = os.listdir('calc')
+  valid_calc_obj_list = []
   all_lib_pri_objs = os.listdir('lib/private')
   all_lib_pub_objs = os.listdir('lib/public')
   for obj in calc_obj_list:
@@ -118,12 +116,12 @@ def get_calc_objs_infos():
     ## Get the result file data
     # lib
     obj_dir = os.path.join('lib', lib_sub_dir, obj)
-    lib_nodes_quantity, lib_total_cores, lib_obj_res_json, \
+    lib_nodes_quantity, lib_total_cores, lib_omp_cores, lib_obj_res_json, \
       lib_obj_band_json, lib_obj_band_gap, lib_obj_dos_json \
       = get_res_data_file_location(obj_dir)
     # calc
     obj_dir = os.path.join('calc', obj)
-    calc_nodes_quantity, calc_total_cores, calc_obj_res_json, \
+    calc_nodes_quantity, calc_total_cores, calc_omp_cores, calc_obj_res_json, \
       calc_obj_band_json, calc_obj_band_gap, calc_obj_dos_json \
       = get_res_data_file_location(obj_dir)
     # File check
@@ -139,6 +137,7 @@ def get_calc_objs_infos():
        (not os.path.isfile(calc_obj_band_gap)):
       print("[warning] %s calc not finished... skip..." %obj)
       continue
+    valid_calc_obj_list.append(obj)
     # Get band gap file data
     lib_bandgap_info = get_bandgap_info(lib_obj_band_gap)
     calc_bandgap_info = get_bandgap_info(calc_obj_band_gap)
@@ -153,11 +152,13 @@ def get_calc_objs_infos():
     }
     calc_objs_infos[obj]["lib"]["cpus"] = {
       "nodes" : lib_nodes_quantity,
-      "cores" : lib_total_cores
+      "cores" : lib_total_cores,
+      "ompcs" : lib_omp_cores
     }
     calc_objs_infos[obj]["calc"]["cpus"] = {
       "nodes" : calc_nodes_quantity,
-      "cores" : calc_total_cores
+      "cores" : calc_total_cores,
+      "ompcs" : calc_omp_cores
     }
     calc_objs_infos[obj]["lib"]["bandgap"] = lib_bandgap_info
     calc_objs_infos[obj]["calc"]["bandgap"] = calc_bandgap_info
@@ -168,7 +169,7 @@ def get_calc_objs_infos():
   if calc_objs_infos == {}:
     print("[error] No calc result avaliable...")
     sys.exit(1)
-  return calc_objs_infos, calc_obj_list
+  return calc_objs_infos, valid_calc_obj_list
 
 def compare_lib_calc(calc_objs_infos, calc_obj_list):
   for obj in calc_obj_list:
@@ -176,11 +177,14 @@ def compare_lib_calc(calc_objs_infos, calc_obj_list):
     # CPU diff.
     lib_nodes = calc_objs_infos[obj]["lib"]["cpus"]["nodes"]
     lib_cores = calc_objs_infos[obj]["lib"]["cpus"]["cores"]
+    lib_ompcs = calc_objs_infos[obj]["lib"]["cpus"]["ompcs"]
     calc_nodes = calc_objs_infos[obj]["calc"]["cpus"]["nodes"]
     calc_cores = calc_objs_infos[obj]["calc"]["cpus"]["cores"]
+    calc_ompcs = calc_objs_infos[obj]["calc"]["cpus"]["ompcs"]
     calc_objs_infos[obj]["compare"]["cpus"] = {
       "nodes_diff" : lib_nodes - calc_nodes,
-      "cores_diff" : lib_cores - calc_cores
+      "cores_diff" : lib_cores - calc_cores,
+      "ompcs_diff" : lib_ompcs - calc_ompcs
     }
     # Relax, SSC, Band, DOS diff.
     calc_objs_infos[obj]["compare"]["time_diff"] = {}
@@ -408,26 +412,70 @@ def dos_plot(lib_dos, calc_dos, obj):
 
 
 def calc_dos_diff(lib_dos, calc_dos):
-  dos_diff = 0
   total_energy_number = len(lib_dos["doss"])
   if lib_dos["spin_num"] == 1:
     yl = lib_dos["doss"]
     yc = calc_dos["doss"]
-    for index in range(len(yl)):
-      dos_diff += (yl[index]-yc[index])**2
+    min_dos_diff = 9999999999999999999999999999
+    if len(yl) > len(yc):
+      mis_dist = len(yl) - len(yc)
+      for mis_index in range(mis_dist+1):
+        dos_diff = 0
+        for index in range(len(yc)):
+          dos_diff += (yl[index+mis_index]-yc[index])**2
+        if min_dos_diff > dos_diff:
+          min_dos_diff = dos_diff
+    else:
+      mis_dist = len(yc) - len(yl)
+      for mis_index in range(mis_dist+1):
+        dos_diff = 0
+        for index in range(len(yl)):
+          dos_diff += (yl[index]-yc[index+mis_index])**2
+        if min_dos_diff > dos_diff:
+          min_dos_diff = dos_diff
   elif lib_dos["spin_num"] == 2:
     yl = lib_dos["doss"]["up"]
     yc = calc_dos["doss"]["up"]
-    for index in range(len(yl)):
-      dos_diff += (yl[index]-yc[index])**2
+    min_dos_diff_up = 9999999999999999999999999999
+    min_dos_diff_dn = 9999999999999999999999999999
+    if len(yl) > len(yc):
+      mis_dist = len(yl) - len(yc)
+      for mis_index in range(mis_dist+1):
+        dos_diff = 0
+        for index in range(len(yc)):
+          dos_diff += (yl[index+mis_index]-yc[index])**2
+        if min_dos_diff_up > dos_diff:
+          min_dos_diff_up = dos_diff
+    else:
+      mis_dist = len(yc) - len(yl)
+      for mis_index in range(mis_dist+1):
+        dos_diff = 0
+        for index in range(len(yl)):
+          dos_diff += (yl[index]-yc[index+mis_index])**2
+        if min_dos_diff_up > dos_diff:
+          min_dos_diff_up = dos_diff
     yl = lib_dos["doss"]["dn"]
     yc = calc_dos["doss"]["dn"]
-    for index in range(len(yl)):
-      dos_diff += (yl[index]-yc[index])**2
-    dos_diff /= 2
-  dos_diff /= total_energy_number
-  dos_diff = dos_diff ** 0.5
-  return dos_diff
+    if len(yl) > len(yc):
+      mis_dist = len(yl) - len(yc)
+      for mis_index in range(mis_dist+1):
+        dos_diff = 0
+        for index in range(len(yc)):
+          dos_diff += (yl[index+mis_index]-yc[index])**2
+        if min_dos_diff_dn > dos_diff:
+          min_dos_diff_dn = dos_diff
+    else:
+      mis_dist = len(yc) - len(yl)
+      for mis_index in range(mis_dist+1):
+        dos_diff = 0
+        for index in range(len(yl)):
+          dos_diff += (yl[index]-yc[index+mis_index])**2
+        if min_dos_diff_dn > dos_diff:
+          min_dos_diff_dn = dos_diff
+    min_dos_diff = (min_dos_diff_up + min_dos_diff_dn) / 2
+  min_dos_diff /= total_energy_number
+  min_dos_diff = min_dos_diff ** 0.5
+  return min_dos_diff
 
 
 def plot_compare_dos(calc_objs_infos, calc_obj_list):
@@ -463,11 +511,13 @@ def report_with_json(calc_objs_infos, civp):
 def get_report_info(calc_objs_infos, obj):
   lib_cpu_nodes = calc_objs_infos[obj]["lib"]["cpus"]["nodes"]
   lib_cpu_cores = calc_objs_infos[obj]["lib"]["cpus"]["cores"]
+  lib_cpu_ompcs = calc_objs_infos[obj]["lib"]["cpus"]["ompcs"]
   lib_time_relax = calc_objs_infos[obj]["lib"]["time"]["relax"]
   lib_time_ssc = calc_objs_infos[obj]["lib"]["time"]["ssc"]
   lib_time_band = calc_objs_infos[obj]["lib"]["time"]["band"]
   lib_time_dos = calc_objs_infos[obj]["lib"]["time"]["dos"]
   lib_time_total = calc_objs_infos[obj]["lib"]["time"]["total"]
+  lib_cpuh_total = lib_time_total * lib_cpu_cores / 3600
   lib_latt = calc_objs_infos[obj]["lib"]["lattice_para"]["relax"]
   lib_force = calc_objs_infos[obj]["lib"]["force_per_atom"]["relax"]
   lib_fermi_relax = calc_objs_infos[obj]["lib"]["fermi"]["relax"]
@@ -480,18 +530,20 @@ def get_report_info(calc_objs_infos, obj):
   lib_energy_dos = calc_objs_infos[obj]["lib"]["energy"]["dos"]
   lib_band_gap = calc_objs_infos[obj]["lib"]["bandgap"]["band_gap"]
   lib_band_homo = calc_objs_infos[obj]["lib"]["bandgap"]["homo_index"]
-  lib_band_vbm = calc_objs_infos[obj]["lib"]["bandgap"]["vbm"] 
+  lib_band_vbm = calc_objs_infos[obj]["lib"]["bandgap"]["vbm"]
   lib_mag_relax = calc_objs_infos[obj]["lib"]["total_mag"]["relax"]
   lib_mag_ssc = calc_objs_infos[obj]["lib"]["total_mag"]["ssc"]
   lib_mag_band = calc_objs_infos[obj]["lib"]["total_mag"]["band"]
-  lib_mag_dos = calc_objs_infos[obj]["lib"]["total_mag"]["dos"] 
+  lib_mag_dos = calc_objs_infos[obj]["lib"]["total_mag"]["dos"]
   calc_cpu_nodes = calc_objs_infos[obj]["calc"]["cpus"]["nodes"]
   calc_cpu_cores = calc_objs_infos[obj]["calc"]["cpus"]["cores"]
+  calc_cpu_ompcs = calc_objs_infos[obj]["calc"]["cpus"]["ompcs"]
   calc_time_relax = calc_objs_infos[obj]["calc"]["time"]["relax"]
   calc_time_ssc = calc_objs_infos[obj]["calc"]["time"]["ssc"]
   calc_time_band = calc_objs_infos[obj]["calc"]["time"]["band"]
   calc_time_dos = calc_objs_infos[obj]["calc"]["time"]["dos"]
   calc_time_total = calc_objs_infos[obj]["calc"]["time"]["total"]
+  calc_cpuh_total = calc_time_total * calc_cpu_cores / 3600
   calc_latt = calc_objs_infos[obj]["calc"]["lattice_para"]["relax"]
   calc_force = calc_objs_infos[obj]["calc"]["force_per_atom"]["relax"]
   calc_fermi_relax = calc_objs_infos[obj]["calc"]["fermi"]["relax"]
@@ -504,18 +556,20 @@ def get_report_info(calc_objs_infos, obj):
   calc_energy_dos = calc_objs_infos[obj]["calc"]["energy"]["dos"]
   calc_band_gap = calc_objs_infos[obj]["calc"]["bandgap"]["band_gap"]
   calc_band_homo = calc_objs_infos[obj]["calc"]["bandgap"]["homo_index"]
-  calc_band_vbm = calc_objs_infos[obj]["calc"]["bandgap"]["vbm"] 
+  calc_band_vbm = calc_objs_infos[obj]["calc"]["bandgap"]["vbm"]
   calc_mag_relax = calc_objs_infos[obj]["calc"]["total_mag"]["relax"]
   calc_mag_ssc = calc_objs_infos[obj]["calc"]["total_mag"]["ssc"]
   calc_mag_band = calc_objs_infos[obj]["calc"]["total_mag"]["band"]
-  calc_mag_dos = calc_objs_infos[obj]["calc"]["total_mag"]["dos"] 
+  calc_mag_dos = calc_objs_infos[obj]["calc"]["total_mag"]["dos"]
   com_cpu_nodes = calc_objs_infos[obj]["compare"]["cpus"]["nodes_diff"]
   com_cpu_cores = calc_objs_infos[obj]["compare"]["cpus"]["cores_diff"]
+  com_cpu_ompcs = calc_objs_infos[obj]["compare"]["cpus"]["ompcs_diff"]
   com_time_relax = calc_objs_infos[obj]["compare"]["time_diff"]["relax"]
   com_time_ssc = calc_objs_infos[obj]["compare"]["time_diff"]["ssc"]
   com_time_band = calc_objs_infos[obj]["compare"]["time_diff"]["band"]
   com_time_dos = calc_objs_infos[obj]["compare"]["time_diff"]["dos"]
   com_time_total = calc_objs_infos[obj]["compare"]["time_diff"]["total"]
+  com_cpuh_total = lib_cpuh_total - calc_cpuh_total
   com_latt = calc_objs_infos[obj]["compare"]["lsc_diff"]["relax"]
   com_force = calc_objs_infos[obj]["compare"]["force_diff"]["relax"]
   com_fermi_relax = calc_objs_infos[obj]["compare"]["fermi_diff"]["relax"]
@@ -540,17 +594,19 @@ def get_report_info(calc_objs_infos, obj):
   # Str
   lib_cpu_nodes = str(lib_cpu_nodes)
   lib_cpu_cores = str(lib_cpu_cores)
+  lib_cpu_ompcs = str(lib_cpu_ompcs)
   lib_time_relax = str(round(lib_time_relax))
   lib_time_ssc = str(round(lib_time_ssc))
   lib_time_band = str(round(lib_time_band))
   lib_time_dos = str(round(lib_time_dos))
   lib_time_total = str(round(lib_time_total))
+  lib_cpuh_total = '%.2f' %(lib_cpuh_total)
   lib_latt = ['%.8f'%val for val in lib_latt]
   lib_force = ['%.8e'%val for val in lib_force]
   lib_fermi_relax = '%.4f'%(lib_fermi_relax)
   lib_fermi_ssc = '%.4f'%(lib_fermi_ssc)
   lib_fermi_band = '%.4f'%(lib_fermi_band)
-  lib_fermi_dos ='%.4f'%(lib_fermi_dos)
+  lib_fermi_dos = '%.4f'%(lib_fermi_dos)
   lib_energy_relax = '%.8f'%(lib_energy_relax)
   lib_energy_ssc = '%.8f'%(lib_energy_ssc)
   lib_energy_band = '%.8f'%(lib_energy_band)
@@ -564,11 +620,13 @@ def get_report_info(calc_objs_infos, obj):
   lib_mag_dos = '%.6f'%(lib_mag_dos)
   calc_cpu_nodes = str(calc_cpu_nodes)
   calc_cpu_cores = str(calc_cpu_cores)
+  calc_cpu_ompcs = str(calc_cpu_ompcs)
   calc_time_relax = str(round(calc_time_relax))
   calc_time_ssc = str(round(calc_time_ssc))
   calc_time_band = str(round(calc_time_band))
   calc_time_dos = str(round(calc_time_dos))
   calc_time_total = str(round(calc_time_total))
+  calc_cpuh_total = '%.2f' %(calc_cpuh_total)
   calc_latt = ['%.8f'%val for val in calc_latt]
   calc_force = ['%.8e'%val for val in calc_force]
   calc_fermi_relax = '%.4f'%(calc_fermi_relax)
@@ -588,11 +646,13 @@ def get_report_info(calc_objs_infos, obj):
   calc_mag_dos = '%.6f'%calc_mag_dos
   com_cpu_nodes = str(com_cpu_nodes)
   com_cpu_cores = str(com_cpu_cores)
+  com_cpu_ompcs = str(com_cpu_ompcs)
   com_time_relax = str(round(com_time_relax))
   com_time_ssc = str(round(com_time_ssc))
   com_time_band = str(round(com_time_band))
   com_time_dos = str(round(com_time_dos))
   com_time_total = str(round(com_time_total))
+  com_cpuh_total = '%.2f' %(com_cpuh_total)
   com_latt = ['%.8f'%(val) for val in com_latt]
   com_force = ['%.8e'%val for val in com_force]
   com_fermi_relax = '%.4f'%(com_fermi_relax)
@@ -612,23 +672,7 @@ def get_report_info(calc_objs_infos, obj):
   com_mag_dos = '%.6f'%com_mag_dos
   com_band_diff = '%.16f'%(com_band_diff)
   com_dos_diff = '%.16f'%(com_dos_diff)
-  return lib_cpu_nodes, lib_cpu_cores, lib_time_relax, lib_time_ssc, \
-    lib_time_band, lib_time_dos, lib_time_total, lib_latt, lib_force, \
-    lib_fermi_relax, lib_fermi_ssc, lib_fermi_band, lib_fermi_dos, \
-    lib_energy_relax, lib_energy_ssc, lib_energy_band, lib_energy_dos, \
-    lib_band_gap, lib_band_homo, lib_band_vbm, lib_mag_relax, lib_mag_ssc, \
-    lib_mag_band, lib_mag_dos, calc_cpu_nodes, calc_cpu_cores, \
-    calc_time_relax, calc_time_ssc, calc_time_band, calc_time_dos, \
-    calc_time_total, calc_latt, calc_force, calc_fermi_relax, calc_fermi_ssc,\
-    calc_fermi_band, calc_fermi_dos, calc_energy_relax, calc_energy_ssc,\
-    calc_energy_band, calc_energy_dos, calc_band_gap, calc_band_homo, \
-    calc_band_vbm, calc_mag_relax, calc_mag_ssc, calc_mag_band, calc_mag_dos, \
-    com_cpu_nodes, com_cpu_cores, com_time_relax, com_time_ssc, com_time_band,\
-    com_time_dos, com_time_total, com_latt, com_force, com_fermi_relax, \
-    com_fermi_ssc, com_fermi_band, com_fermi_dos, com_energy_relax, \
-    com_energy_ssc, com_energy_band, com_energy_dos, com_band_gap, \
-    com_band_homo, com_band_vbm, com_mag_relax, com_mag_ssc, com_mag_band, \
-    com_mag_dos, com_band_diff, com_dos_diff, com_band_plot, com_dos_plot
+  return lib_cpu_nodes, lib_cpu_cores, lib_cpu_ompcs, lib_time_relax, lib_time_ssc, lib_time_band, lib_time_dos, lib_time_total, lib_cpuh_total, lib_latt, lib_force, lib_fermi_relax, lib_fermi_ssc, lib_fermi_band, lib_fermi_dos, lib_energy_relax, lib_energy_ssc, lib_energy_band, lib_energy_dos, lib_band_gap, lib_band_homo, lib_band_vbm, lib_mag_relax, lib_mag_ssc, lib_mag_band, lib_mag_dos, calc_cpu_nodes, calc_cpu_cores, calc_cpu_ompcs, calc_time_relax, calc_time_ssc, calc_time_band, calc_time_dos, calc_time_total, calc_cpuh_total, calc_latt, calc_force, calc_fermi_relax, calc_fermi_ssc, calc_fermi_band, calc_fermi_dos, calc_energy_relax, calc_energy_ssc, calc_energy_band, calc_energy_dos, calc_band_gap, calc_band_homo, calc_band_vbm, calc_mag_relax, calc_mag_ssc, calc_mag_band, calc_mag_dos, com_cpu_nodes, com_cpu_cores, com_cpu_ompcs, com_time_relax, com_time_ssc, com_time_band, com_time_dos, com_time_total, com_cpuh_total, com_latt, com_force, com_fermi_relax, com_fermi_ssc, com_fermi_band, com_fermi_dos, com_energy_relax, com_energy_ssc, com_energy_band, com_energy_dos, com_band_gap, com_band_homo, com_band_vbm, com_mag_relax, com_mag_ssc, com_mag_band, com_mag_dos, com_band_diff, com_dos_diff, com_band_plot, com_dos_plot
 
 
 def report_with_txt(calc_objs_infos, calc_obj_list, civp):
@@ -638,31 +682,13 @@ def report_with_txt(calc_objs_infos, calc_obj_list, civp):
   '                                                                    ',
   '                           - VASPRUN SERVER TEST -                  ',
   '                                                                    ',
-  'Benchmark  --- Hostname   [ %s ]' %civp["bm_server"],
-  '            |- Relax VASP [ %s ]' %civp["bm_relax_vasp"],
-  '            |- SSC VASP   [ %s ]' %civp["bm_ssc_vasp"],
-  'Curr. Test --- Hostname   [ %s ]' %civp["st_server"],
-  '            |- Relax VASP [ %s ]' %civp["st_relax_vasp"],
-  '            |- SSC VASP   [ %s ]' %civp["st_ssc_vasp"],
+  'Benchmark  --- Hostname [ %s ]' %civp["bm_server"],
+  '            |- VASP     [ %s ]' %civp["bm_vasp"],
+  'Curr. Test --- Hostname [ %s ]' %civp["st_server"],
+  '            |- VASP     [ %s ]' %civp["st_vasp"],
   '                                                                    ',]
   for obj in calc_obj_list:
-    lib_cpu_nodes, lib_cpu_cores, lib_time_relax, lib_time_ssc, lib_time_band, \
-    lib_time_dos, lib_time_total, lib_latt, lib_force, lib_fermi_relax, \
-    lib_fermi_ssc, lib_fermi_band, lib_fermi_dos, lib_energy_relax, \
-    lib_energy_ssc, lib_energy_band, lib_energy_dos, lib_band_gap, \
-    lib_band_homo, lib_band_vbm, lib_mag_relax, lib_mag_ssc, lib_mag_band, \
-    lib_mag_dos, calc_cpu_nodes, calc_cpu_cores, calc_time_relax, \
-    calc_time_ssc, calc_time_band, calc_time_dos, calc_time_total, calc_latt, \
-    calc_force, calc_fermi_relax, calc_fermi_ssc, calc_fermi_band, \
-    calc_fermi_dos, calc_energy_relax, calc_energy_ssc, calc_energy_band, \
-    calc_energy_dos, calc_band_gap, calc_band_homo, calc_band_vbm, \
-    calc_mag_relax, calc_mag_ssc, calc_mag_band, calc_mag_dos, com_cpu_nodes, \
-    com_cpu_cores, com_time_relax, com_time_ssc, com_time_band, com_time_dos, \
-    com_time_total, com_latt, com_force, com_fermi_relax, com_fermi_ssc, \
-    com_fermi_band, com_fermi_dos, com_energy_relax, com_energy_ssc, \
-    com_energy_band, com_energy_dos, com_band_gap, com_band_homo, \
-    com_band_vbm, com_mag_relax, com_mag_ssc, com_mag_band, com_mag_dos, \
-    com_band_diff, com_dos_diff, com_band_plot, com_dos_plot \
+    lib_cpu_nodes, lib_cpu_cores, lib_cpu_ompcs, lib_time_relax, lib_time_ssc, lib_time_band, lib_time_dos, lib_time_total, lib_cpuh_total, lib_latt, lib_force, lib_fermi_relax, lib_fermi_ssc, lib_fermi_band, lib_fermi_dos, lib_energy_relax, lib_energy_ssc, lib_energy_band, lib_energy_dos, lib_band_gap, lib_band_homo, lib_band_vbm, lib_mag_relax, lib_mag_ssc, lib_mag_band, lib_mag_dos, calc_cpu_nodes, calc_cpu_cores, calc_cpu_ompcs, calc_time_relax, calc_time_ssc, calc_time_band, calc_time_dos, calc_time_total, calc_cpuh_total, calc_latt, calc_force, calc_fermi_relax, calc_fermi_ssc, calc_fermi_band, calc_fermi_dos, calc_energy_relax, calc_energy_ssc, calc_energy_band, calc_energy_dos, calc_band_gap, calc_band_homo, calc_band_vbm, calc_mag_relax, calc_mag_ssc, calc_mag_band, calc_mag_dos, com_cpu_nodes, com_cpu_cores, com_cpu_ompcs, com_time_relax, com_time_ssc, com_time_band, com_time_dos, com_time_total, com_cpuh_total, com_latt, com_force, com_fermi_relax, com_fermi_ssc, com_fermi_band, com_fermi_dos, com_energy_relax, com_energy_ssc, com_energy_band, com_energy_dos, com_band_gap, com_band_homo, com_band_vbm, com_mag_relax, com_mag_ssc, com_mag_band, com_mag_dos, com_band_diff, com_dos_diff, com_band_plot, com_dos_plot \
       = get_report_info(calc_objs_infos, obj)
     obj_index += 1
     curr_obj_report_txt = [
@@ -672,12 +698,14 @@ def report_with_txt(calc_objs_infos, calc_obj_list, civp):
     '-----------------++-------------------+-------------------+-------------------',
     ' CPUs    | Nodes || %17s | %17s | %17s '%(lib_cpu_nodes, calc_cpu_nodes, com_cpu_nodes),
     '         | Cores || %17s | %17s | %17s '%(lib_cpu_cores, calc_cpu_cores, com_cpu_cores),
+    '         | OMPCs || %17s | %17s | %17s '%(lib_cpu_ompcs, calc_cpu_ompcs, com_cpu_ompcs),
     '-----------------++-------------------+-------------------+-------------------',
     ' Time    | Relax || %17s | %17s | %17s '%(lib_time_relax, calc_time_relax, com_time_relax),
     '  (s)    | SSC   || %17s | %17s | %17s '%(lib_time_ssc, calc_time_ssc, com_time_ssc),
     '         | Band  || %17s | %17s | %17s '%(lib_time_band, calc_time_band, com_time_band),
     '         | DOS   || %17s | %17s | %17s '%(lib_time_dos, calc_time_dos, com_time_dos),
     '         | Total || %17s | %17s | %17s '%(lib_time_total, calc_time_total, com_time_total),
+    '         | CPUH  || %17s | %17s | %17s '%(lib_cpuh_total, calc_cpuh_total, com_cpuh_total),
     '-----------------++-------------------+-------------------+-------------------',
     ' Lattice | a     || %17s | %17s | %17s '%(lib_latt[0], calc_latt[0], com_latt[0]),
     '   (A)   | b     || %17s | %17s | %17s '%(lib_latt[1], calc_latt[1], com_latt[1]),
@@ -721,7 +749,7 @@ def report_with_txt(calc_objs_infos, calc_obj_list, civp):
     for line in report_txt:
       fwp.write(line + '\n')
   os.chdir("..")
-  return 0 
+  return 0
 
 
 def report_with_pdflatex(calc_objs_infos, calc_obj_list, civp):
@@ -730,11 +758,13 @@ def report_with_pdflatex(calc_objs_infos, calc_obj_list, civp):
   report_latex = [
   '\\documentclass[a4paper, 12pt]{article}',
   '\\usepackage{float}',
+  '\\usepackage{arydshln}',
   '\\usepackage{graphicx}',
   '\\usepackage{grffile}',
   '\\usepackage{subfigure}',
   '\\usepackage{multirow}',
   '\\usepackage[colorlinks,linkcolor=red,anchorcolor=blue,citecolor=green]{hyperref}',
+  '\\usepackage{url}',
   '\\setcounter{section}{-1}',
   ' ',
   '\\title{\\textbf{VASPRUN SERVER TEST}}',
@@ -750,12 +780,12 @@ def report_with_pdflatex(calc_objs_infos, calc_obj_list, civp):
   '\\hline',
   '\\hline',
   'Benchmark & Hostname   & %s \\\\' %civp["bm_server"],
-  '          & Relax VASP & %s \\\\' %civp["bm_relax_vasp"],
-  '          & SSC VASP   & %s \\\\' %civp["bm_ssc_vasp"],
+  '\\cdashline{2-3}[1pt/2pt]',
+  '          & VASP & \\url{%s} \\\\' %civp["bm_vasp"],
   '\\hline',
   'Current Test & Hostname   & %s \\\\' %civp["st_server"],
-  '             & Relax VASP & %s \\\\' %civp["st_relax_vasp"],
-  '             & SSC VASP   & %s \\\\' %civp["st_ssc_vasp"],
+  '\\cdashline{2-3}[1pt/2pt]',
+  '             & VASP & \\url{%s} \\\\' %civp["st_vasp"],
   '\\hline',
   '\\hline',
   '  \\end{tabular}',
@@ -764,23 +794,7 @@ def report_with_pdflatex(calc_objs_infos, calc_obj_list, civp):
   '\\clearpage',
   '']
   for obj in calc_obj_list:
-    lib_cpu_nodes, lib_cpu_cores, lib_time_relax, lib_time_ssc, lib_time_band, \
-    lib_time_dos, lib_time_total, lib_latt, lib_force, lib_fermi_relax, \
-    lib_fermi_ssc, lib_fermi_band, lib_fermi_dos, lib_energy_relax, \
-    lib_energy_ssc, lib_energy_band, lib_energy_dos, lib_band_gap, \
-    lib_band_homo, lib_band_vbm, lib_mag_relax, lib_mag_ssc, lib_mag_band, \
-    lib_mag_dos, calc_cpu_nodes, calc_cpu_cores, calc_time_relax, \
-    calc_time_ssc, calc_time_band, calc_time_dos, calc_time_total, calc_latt, \
-    calc_force, calc_fermi_relax, calc_fermi_ssc, calc_fermi_band, \
-    calc_fermi_dos, calc_energy_relax, calc_energy_ssc, calc_energy_band, \
-    calc_energy_dos, calc_band_gap, calc_band_homo, calc_band_vbm, \
-    calc_mag_relax, calc_mag_ssc, calc_mag_band, calc_mag_dos, com_cpu_nodes, \
-    com_cpu_cores, com_time_relax, com_time_ssc, com_time_band, com_time_dos, \
-    com_time_total, com_latt, com_force, com_fermi_relax, com_fermi_ssc, \
-    com_fermi_band, com_fermi_dos, com_energy_relax, com_energy_ssc, \
-    com_energy_band, com_energy_dos, com_band_gap, com_band_homo, \
-    com_band_vbm, com_mag_relax, com_mag_ssc, com_mag_band, com_mag_dos, \
-    com_band_diff, com_dos_diff, com_band_plot, com_dos_plot \
+    lib_cpu_nodes, lib_cpu_cores, lib_cpu_ompcs, lib_time_relax, lib_time_ssc, lib_time_band, lib_time_dos, lib_time_total, lib_cpuh_total, lib_latt, lib_force, lib_fermi_relax, lib_fermi_ssc, lib_fermi_band, lib_fermi_dos, lib_energy_relax, lib_energy_ssc, lib_energy_band, lib_energy_dos, lib_band_gap, lib_band_homo, lib_band_vbm, lib_mag_relax, lib_mag_ssc, lib_mag_band, lib_mag_dos, calc_cpu_nodes, calc_cpu_cores, calc_cpu_ompcs, calc_time_relax, calc_time_ssc, calc_time_band, calc_time_dos, calc_time_total, calc_cpuh_total, calc_latt, calc_force, calc_fermi_relax, calc_fermi_ssc, calc_fermi_band, calc_fermi_dos, calc_energy_relax, calc_energy_ssc, calc_energy_band, calc_energy_dos, calc_band_gap, calc_band_homo, calc_band_vbm, calc_mag_relax, calc_mag_ssc, calc_mag_band, calc_mag_dos, com_cpu_nodes, com_cpu_cores, com_cpu_ompcs, com_time_relax, com_time_ssc, com_time_band, com_time_dos, com_time_total, com_cpuh_total, com_latt, com_force, com_fermi_relax, com_fermi_ssc, com_fermi_band, com_fermi_dos, com_energy_relax, com_energy_ssc, com_energy_band, com_energy_dos, com_band_gap, com_band_homo, com_band_vbm, com_mag_relax, com_mag_ssc, com_mag_band, com_mag_dos, com_band_diff, com_dos_diff, com_band_plot, com_dos_plot \
       = get_report_info(calc_objs_infos, obj)
     obj_index += 1
     obj_report_latex = [
@@ -793,12 +807,14 @@ def report_with_pdflatex(calc_objs_infos, calc_obj_list, civp):
     '    \\hline',
     '    \\multirow{2}{*}{CPUs} & Nodes & %10s & %10s & %10s\\\\'%(lib_cpu_nodes, calc_cpu_nodes, com_cpu_nodes),
     '                           & Cores & %10s & %10s & %10s\\\\'%(lib_cpu_cores, calc_cpu_cores, com_cpu_cores),
+    '                           & OMPCs & %10s & %10s & %10s\\\\'%(lib_cpu_ompcs, calc_cpu_ompcs, com_cpu_ompcs),
     '    \\hline',
     '    \\multirow{5}{*}{Time (s)} & Relax & %10s & %10s &%10s\\\\'%(lib_time_relax, calc_time_relax, com_time_relax),
     '                               & SSC   & %10s & %10s &%10s\\\\'%(lib_time_ssc, calc_time_ssc, com_time_ssc),
     '                               & Band  & %10s & %10s &%10s\\\\'%(lib_time_band, calc_time_band, com_time_band),
     '                               & DOS   & %10s & %10s &%10s\\\\'%(lib_time_dos, calc_time_dos, com_time_dos),
     '                               & Total & %10s & %10s &%10s\\\\'%(lib_time_total, calc_time_total, com_time_total),
+    '                               & CPUH  & %10s & %10s &%10s\\\\'%(lib_cpuh_total, calc_cpuh_total, com_cpuh_total),
     '    \\hline',
     '    \\multirow{3}{*}{Lattice (\\AA)} & a & %10s & %10s &%10s\\\\'%(lib_latt[0], calc_latt[0], com_latt[0]),
     '                                     & b & %10s & %10s &%10s\\\\'%(lib_latt[1], calc_latt[1], com_latt[1]),

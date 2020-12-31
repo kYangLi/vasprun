@@ -1,3 +1,4 @@
+'''vasprun main script'''
 # Author: liyang@cmt.tsinghua
 # Date: 2020.8.2
 # Descripution: This python script is designed for run vasp
@@ -9,17 +10,19 @@ import json
 
 
 def grep(tstr, file):
+  '''linux grep-like command'''
   with open(file) as frp:
     lines = frp.readlines()
   targets = []
   for line in lines:
     if tstr in line:
-      line = line.replace('\n','')
+      line = line.replace('\n', '')
       targets.append(line)
   return targets
 
 
 def check_input_json(vasprun_path):
+  '''check the input json file'''
   input_json = 'vr.input.json'
   if not os.path.isfile(input_json):
     input_json = os.path.join(vasprun_path, input_json)
@@ -36,6 +39,7 @@ def check_input_json(vasprun_path):
 
 
 def read_parameters():
+  '''read in the parameters from command line'''
   print("")
   print("+----------------------------+")
   print("|     Parameters Read in     |")
@@ -57,7 +61,7 @@ def read_parameters():
   vasprun_path = os.path.realpath(sys.argv[0])
   curr_script_name = os.path.split(vasprun_path)[-1]
   vasprun_path = vasprun_path.replace('/'+curr_script_name, '')
-  python_exec = os.popen('which python').read().replace('\n','')
+  python_exec = os.popen('which python').read().replace('\n', '')
   path_list = {"vasprun_path" : vasprun_path,
                "python_exec"  : python_exec}
   calc_para_list = check_input_json(vasprun_path)
@@ -74,23 +78,21 @@ def read_parameters():
   # Task Name
   print("[do] Read in the task name...")
   curr_dirname = os.path.split(os.getcwd())[-1]
-  # default_task_name = calc_para_list["task_name"]
-  # if not default_task_name:
-  #   default_task_name = curr_dirname
   default_task_name = curr_dirname
   print("[input] Please input the task name. [ %s ]" %default_task_name)
   task_name = input('> ')
-  if task_name.replace(' ','') == '':
+  if task_name.replace(' ', '') == '':
     task_name = default_task_name
   calc_para_list["task_name"] = task_name
   print("[para] Task name: %s" %task_name)
   print("")
-  # Selected Task List
+  # Select Task List
   print("[do] Read in the task list...")
   default_task_list = calc_para_list.get("task_list")
   if not default_task_list:
     default_task_list = 'TTTT'
   print("[input] Please input the selected task list. [ %s ]"%default_task_list)
+  print("[tips] Tasks list: Relax, SSC, Band, DOS.")
   task_list = input("> ")
   if task_list.replace(' ', '') == '':
     task_list = default_task_list
@@ -99,72 +101,52 @@ def read_parameters():
     print("[error] Invalid task list, exit...")
     sys.exit(1)
   if task_list[2] == 'T' or task_list[3] == 'T':
-    print("[info] Calculating the Bnad or DOS, add the SSC task to the list...")
+    print("[info] Calculating the Band or DOS, add the SSC task to the list...")
     # if calculate the band or dos, then must calculate ssc.
     task_list = task_list[0] + 'T' + task_list[2] + task_list[3]
   calc_para_list["task_list"] = task_list
   print("[para] Task list: %s" %task_list)
   print("")
-  # Intel Module
-  print("[do] Read in the intel module...")
-  intel_module = calc_para_list.get("intel_module")
-  if not intel_module:
-    print("[info] Not set the INTEL MODULE yet...")
+  # Prog Module
+  print("[do] Read in the module...")
+  prog_module = calc_para_list.get("prog_module")
+  if not prog_module:
+    print("[info] Not set the MODULE yet...")
     print("[input] Please input the intel module.")
-    intel_module = input("> ")
-    calc_para_list["intel_module"] = intel_module
-  command = "%s > /dev/null 2>&1; echo ${MKLROOT}"\
-            %(calc_para_list["intel_module"])
-  mklroot = os.popen(command).read().replace('\n','')
-  print("[para] Using the Intel module: %s" %intel_module)
-  print("[para] Using the Intel MKL lib: %s" %(mklroot))
+    prog_module = input("> ")
+    calc_para_list["prog_module"] = prog_module
+  command = "%s > /dev/null 2>&1; echo ${MKLROOT}" \
+            %(calc_para_list["prog_module"])
+  mklroot = os.popen(command).read().replace('\n', '')
+  print("[para] Using the program module: %s" %prog_module)
+  print("[para] Using the MKL lib: %s" %(mklroot))
   print("")
-  # VASP for Relax
-  if task_list[0] == 'T':
-    print("[do] Read in the VASP for relax...")
-    relax_vasp = calc_para_list.get("relax_vasp")
-    if not relax_vasp:
-      print("[info] Not set the VASP for relax yet...")
-      print("[input] Please input the vasp.relax path.")
-      relax_vasp = input("> ")
-      calc_para_list["relax_vasp"] = relax_vasp
-    if not os.path.isfile(relax_vasp):
-      print("[error] Invalid path of relax VASP... exit..")
-      sys.exit(1)
-    print("[para] Using the relax VASP: %s" %(relax_vasp))
-  else:
-    print("[skip] The relax step is not in the task list...")
-    print("[skip] Skip the read in for relax VASP...")
-  print("")
-  # VASP for SSC
-  if task_list[1] == 'T' or task_list[3] == 'T':
-    print("[do] Read in the VASP for SSC...")
-    ssc_vasp = calc_para_list.get("ssc_vasp")
-    if not ssc_vasp:
-      print("[info] Not set the VASP for SSC yet...")
-      print("[input] Please input the vasp.ssc path.")
-      ssc_vasp = input("> ")
-      calc_para_list["ssc_vasp"] = ssc_vasp
-    if not os.path.isfile(ssc_vasp):
-      print("[error] Invalid path of ssc VASP... exit..")
-      sys.exit(1)
-    print("[para] Using the SSC VASP: %s" %(ssc_vasp))
-  else:
-    print("[skip] The ssc step is not in the task list...")
-    print("[skip] Skip the read in for SSC VASP...")
+  # VASP Executable program
+  print("[do] Read in the VASP exec...")
+  vasp_exec = calc_para_list.get("vasp_exec")
+  if not vasp_exec:
+    print("[info] Not set the path of VASP yet...")
+    print("[input] Please input the VASP path.")
+    vasp_exec = input("> ")
+    calc_para_list["vasp_exec"] = vasp_exec
+  if not os.path.isfile(vasp_exec):
+    print("[error] Invalid path of ssc VASP... exit..")
+    sys.exit(1)
+  print("[para] Using the VASP: %s" %(vasp_exec))
   print("")
   # VASPKIT
   if task_list[2] == 'T' or task_list[3] == 'T':
     print("[do] Read in the VASPKIT...")
     vaspkit = calc_para_list.get("vaspkit")
     if not vaspkit:
-      print("[info] Not set the VASPKIT yet...")
-      print("[input] Please input the vaspkit path.")
-      vaspkit = input("> ")
-      calc_para_list["vaspkit"] = vaspkit
+      print("[info] Not specify the VASPKIT...")
+      print("[info] Using the vaspkit in vasprun project")
+      vaspkit = os.path.join(vasprun_path, 'external',
+                             'vaspkit', 'vaspkit-1.12')
     if not os.path.isfile(vaspkit):
       print("[error] Invalid path of vaspkit... exit..")
       sys.exit(1)
+    calc_para_list["vaspkit"] = vaspkit
     # Check vaspkit version:
     vk_res = os.popen('echo 0 | %s' %vaspkit).read()
     vk_version = vk_res.split('VASPKIT Version:')[1].split()[0]
@@ -185,7 +167,7 @@ def read_parameters():
   sys_type = calc_para_list.get("sys_type")
   if sys_type not in sys_type_list:
     print("[input] Please input the system type of your machine.")
-    print("[input] You can choice one from the list: ", sys_type_list)
+    print("[input] You can choice one from: ", sys_type_list)
     sys_type = input("> ")
     if sys_type not in sys_type_list:
       print("[error] Invalid system type...")
@@ -202,38 +184,16 @@ def read_parameters():
   print("[input] Please input the number of cores per node. [ %d ]"
         %default_cores_per_node)
   cores_per_node = input('> ')
-  if cores_per_node.replace(' ','') == '':
+  if cores_per_node.replace(' ', '') == '':
     cores_per_node = default_cores_per_node
   else:
     cores_per_node = int(cores_per_node)
-    if (cores_per_node <= 0):
+    if cores_per_node <= 0:
       print('[error] Invalid nodes quantity...')
       sys.exit(1)
   calc_para_list["cores_per_node"] = cores_per_node
   print("[para] Set the number of cores per node: %d" %(cores_per_node))
   print("")
-  # OPENMP cpus number
-  if (sys_type == 'pbs') or (sys_type == 'direct'):
-    print("[do] Read in the OPENMP cups number...")
-    default_openmp_cpus = calc_para_list.get("openmp_cpus", 1)
-    if (not isinstance(default_openmp_cpus, int)) or \
-       (default_openmp_cpus <= 0):
-      default_openmp_cpus = 1
-    print("[input] Please input the number of vasp6 OMP cups. [ %d ]"
-          %(default_openmp_cpus))
-    openmp_cpus = input('> ')
-    if openmp_cpus.replace(' ', '') == '':
-      openmp_cpus = default_openmp_cpus
-    else:
-      openmp_cpus = int(openmp_cpus)
-    if (cores_per_node <= 0) or \
-      (cores_per_node//openmp_cpus*openmp_cpus != cores_per_node):
-      print('[error] Invalid omp cups number...')
-      print('[tips] The omp cups num must be a divisor of the cores per node.')
-      sys.exit(1)
-    calc_para_list["openmp_cpus"] = openmp_cpus
-    print("[para] Set the number of OMP cpus: %d" %(openmp_cpus))
-    print("")
   # Nodes Quantity
   print("[do] Read in the nodes quantity...")
   default_nodes_quantity = calc_para_list.get("nodes_quantity")
@@ -243,49 +203,78 @@ def read_parameters():
   print("[input] Please input the nodes quantity. [ %d ]"
         %default_nodes_quantity)
   nodes_quantity = input('> ')
-  if nodes_quantity.replace(' ','') == '':
+  if nodes_quantity.replace(' ', '') == '':
     nodes_quantity = default_nodes_quantity
   else:
     nodes_quantity = int(nodes_quantity)
     if (not isinstance(nodes_quantity, int)) or (nodes_quantity <= 0):
       print('[error] Invalid nodes quantity...')
       sys.exit(1)
+  total_cores = nodes_quantity * cores_per_node
   calc_para_list["nodes_quantity"] = nodes_quantity
   print("[para] Using %d nodes." %nodes_quantity)
+  print("[para] Using %d cores." %total_cores)
   print("")
-  # PBS Walltime
-  if sys_type == 'pbs':
-    print("[do] Read in the PBS walltime...")
-    default_pbs_walltime = calc_para_list.get("pbs_walltime")
-    if (not isinstance(default_pbs_walltime, int)) or \
-      (default_pbs_walltime <= 0):
-      default_pbs_walltime = 1
-    print("[input] Please input the PBS walltime in hours. [ %d ]" 
-          %default_pbs_walltime)
-    pbs_walltime = input('> ')
-    if pbs_walltime.replace(' ','') == '':
-      pbs_walltime = default_pbs_walltime
+  # OPENMP cpus number
+  print("[do] Read in the OpenMP cores number...")
+  default_openmp_cores = calc_para_list.get("openmp_cores", 1)
+  if (not isinstance(default_openmp_cores, int)) or (default_openmp_cores <= 0):
+    default_openmp_cores = 1
+  print("[input] Please input the number of OpenMP cores. [ %d ]"
+        %(default_openmp_cores))
+  openmp_cores = input('> ')
+  if openmp_cores.replace(' ', '') == '':
+    openmp_cores = default_openmp_cores
+  else:
+    openmp_cores = int(openmp_cores)
+  if (cores_per_node <= 0) or \
+    (cores_per_node//openmp_cores*openmp_cores != cores_per_node):
+    print('[error] Invalid omp cores number...')
+    print('[tips] The omp cores num must be a divisor of the cores per node.')
+    sys.exit(1)
+  tasks_per_node = cores_per_node // openmp_cores
+  total_tasks = total_cores // openmp_cores
+  calc_para_list["openmp_cores"] = openmp_cores
+  print("[para] Set the number of OMP cpus: %d" %(openmp_cores))
+  print("[para] Tasks number per node: %d" %(tasks_per_node))
+  print("[para] Total tasks number: %d" %(total_tasks))
+  print("")
+  # Job Walltime
+  if sys_type in ('pbs', 'slurm', 'nscc'):
+    print("[do] Read in the jobs walltime...")
+    default_job_walltime = calc_para_list.get("job_walltime")
+    if (not isinstance(default_job_walltime, int)) or \
+      (default_job_walltime <= 0):
+      default_job_walltime = 1
+    print("[input] Please input the job walltime in hours. [ %d ]"
+          %default_job_walltime)
+    job_walltime = input('> ')
+    if job_walltime.replace(' ', '') == '':
+      job_walltime = default_job_walltime
     else:
-      pbs_walltime = int(pbs_walltime)
-      if (not isinstance(pbs_walltime, int)) or (pbs_walltime <= 0):
-        print('[error] Invalid PBS walltime...')
+      job_walltime = int(job_walltime)
+      if (not isinstance(job_walltime, int)) or (job_walltime <= 0):
+        print('[error] Invalid job walltime...')
         sys.exit(1)
-    calc_para_list["pbs_walltime"] = pbs_walltime
-    print("[para] Using PBS wall time : %s hour(s)." %pbs_walltime)
+    calc_para_list["job_walltime"] = job_walltime
+    print("[para] Using job walltime : %s hour(s)." %job_walltime)
     print("")
   # Job Queue(Partition)
-  if (sys_type == 'pbs') or (sys_type == 'slurm') or (sys_type == 'nscc'):
+  if sys_type in ('pbs', 'slurm', 'nscc'):
     print("[do] Read in the job queue (partition)...")
     default_job_queue = calc_para_list.get("job_queue")
     print("[input] Please input the job queue (partition). [ %s ]" %default_job_queue)
     job_queue = input("> ")
-    if job_queue.replace(' ','') == '':
+    if job_queue.replace(' ', '') == '':
       job_queue = default_job_queue
-    if job_queue.replace(' ','') == '':
+    if job_queue.replace(' ', '') == '':
       print("[error] Invalid job queue (partition)...")
       sys.exit(1)
     calc_para_list["job_queue"] = job_queue
-    print("[para] You are in the queue: %s" %job_queue)
+    if job_queue == 'unset-queue':
+      print("[para] You are using the default queue(partition).")
+    else:
+      print("[para] You are in the queue: %s" %job_queue)
     print("")
   # Plot Energy Window
   if task_list[2] == 'T' or task_list[3] == 'T':
@@ -293,10 +282,9 @@ def read_parameters():
     default_pew = calc_para_list.get("plot_energy_window")
     if not default_pew:
       default_pew = [-6, 6]
-    print("[input] Please input the plot energy window. [ %f, %f ]" 
-          %(default_pew[0], default_pew[1]))
+    print("[input] Please input the plot energy window. [", default_pew, "]")
     pew = input('> ')
-    if pew.replace(' ','') == '':
+    if pew.replace(' ', '') == '':
       pew = default_pew
     else:
       pew = pew.split()
@@ -313,6 +301,7 @@ def read_parameters():
 
 
 def record_parameters(filename_list, calc_para_list, path_list):
+  '''record the parameters to the allpara file'''
   all_para_list = {"filename"  : filename_list,
                    "calc_para" : calc_para_list,
                    "path_list" : path_list}
@@ -324,13 +313,14 @@ def record_parameters(filename_list, calc_para_list, path_list):
 
 
 def file_check(calc_para_list):
+  '''input file check'''
   print("+----------------------------+")
   print("|         File Check         |")
   print("+----------------------------+")
   task_list = calc_para_list["task_list"]
   ## POSCAR
   print("[do] Checing POSCAR...")
-  element_table = ['H',  'He', 'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne',
+  element_table = ['H' , 'He', 'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne',
                    'Na', 'Mg', 'Al', 'Si', 'P' , 'S' , 'Cl', 'Ar', 'K' , 'Ca',
                    'Sc', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
                    'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y' , 'Zr',
@@ -347,7 +337,7 @@ def file_check(calc_para_list):
     sys.exit(1)
   with open('POSCAR') as frp:
     lines = frp.readlines()
-  poscar_elements = lines[5].replace('\n','').split()
+  poscar_elements = lines[5].replace('\n', '').split()
   for element in poscar_elements:
     if element not in element_table:
       print("[error] POSCAR element list error...")
@@ -402,101 +392,96 @@ def file_check(calc_para_list):
   return 0
 
 
+def replace_script_keyword(submit_file, filename_list,
+                           calc_para_list, path_list):
+  '''replace the keywords with values in the submit script'''
+  # Parameters
+  sys_type = calc_para_list.get("sys_type")
+  submit_trg_file = "vasp_submit.%s.sh" %(sys_type)
+  vasprun_path = path_list.get("vasprun_path")
+  python_exec = path_list.get("python_exec")
+  mpi_machinefile = filename_list.get("mpi_machinefile")
+  vasp_exec = calc_para_list.get("vasp_exec")
+  nodes_quantity = calc_para_list.get("nodes_quantity")
+  cores_per_node = calc_para_list.get("cores_per_node")
+  openmp_cores = calc_para_list.get("openmp_cores")
+  total_cores = nodes_quantity * cores_per_node
+  tasks_per_node = cores_per_node // openmp_cores
+  total_tasks = total_cores // openmp_cores
+  task_name = calc_para_list.get("task_name")
+  job_walltime = calc_para_list.get("job_walltime")
+  job_queue = calc_para_list.get("job_queue")
+  prog_module = calc_para_list.get('prog_module')
+  vasp_calc_script = os.path.join(vasprun_path, 'submit', 'vasp_calc.py')
+  # Open file
+  with open(submit_file) as frp:
+    script = frp.read()
+  # Replace
+  script = script.replace('__submit_trg_script__', submit_trg_file)
+  script = script.replace('__task_name__', task_name)
+  script = script.replace('__nodes_quantity__', str(nodes_quantity))
+  script = script.replace('__cores_per_node__', str(cores_per_node))
+  script = script.replace('__job_walltime__', str(job_walltime))
+  if job_queue == 'unset-queue':
+    script = script.replace('#PBS -q', '##PBS -q')
+    script = script.replace('#SBATCH --partition', '##SBATCH --partition')
+  else:
+    script = script.replace('__job_queue__', job_queue)
+  script = script.replace('__prog_module__', prog_module)
+  script = script.replace('__vasp_calc_script__', vasp_calc_script)
+  script = script.replace('__mpi_machinefile__', mpi_machinefile)
+  script = script.replace('__openmp_cores__', str(openmp_cores))
+  script = script.replace('__tasks_per_node__', str(tasks_per_node))
+  script = script.replace('__total_tasks__', str(total_tasks))
+  script = script.replace('__python_exec__', python_exec)
+  script = script.replace('__vasp_exec__', vasp_exec)
+  return script
+
+
+def get_submit_command(script):
+  '''get the submit command (such as qsub)'''
+  command_line_tag = "####::SUBMIT_COMMAND::"
+  script_lines = script.split('\n')
+  for script_line in script_lines:
+    if command_line_tag in script_line:
+      submit_command = \
+        script_line.replace(command_line_tag, "").replace("\n", "")
+      break
+  return submit_command
+
+
 def vasp_submit(filename_list, calc_para_list, path_list):
+  '''submit the jobs'''
   print("+----------------------------+")
   print("|         Submit VASP        |")
   print("+----------------------------+")
   print("[do] Creating job submit script...")
   # Parameters read in
-  vasprun_path = path_list["vasprun_path"]
-  sys_type = calc_para_list["sys_type"]
-  nodes_quantity = calc_para_list["nodes_quantity"]
-  cores_per_node = calc_para_list["cores_per_node"]
-  total_cores = nodes_quantity * cores_per_node
-  task_name = calc_para_list["task_name"]
-  vasp_calc_script = os.path.join(vasprun_path, 'submit', 'vasp_calc.py')
-  python_exec = os.popen('which python').read().replace('\n','')
-  # PBS system
-  if sys_type == 'pbs':
-    pbs_walltime = calc_para_list["pbs_walltime"]
-    job_queue = calc_para_list["job_queue"]
-    mpi_machinefile = filename_list["mpi_machinefile"]
-    submit_file = "%s/submit/pbs.sh" %vasprun_path
-    with open(submit_file) as frp:
-      script = frp.read()
-    script = script.replace('__task_name__', task_name)
-    script = script.replace('__nodes_quantity__', str(nodes_quantity))
-    script = script.replace('__cores_per_node__', str(cores_per_node))
-    script = script.replace('__pbs_walltime__', str(pbs_walltime))
-    if job_queue == 'unset-queue':
-      script = script.replace('#PBS -q', '##PBS -q')
-    else:
-      script = script.replace('__job_queue__', job_queue)
-    script = script.replace('__python_exec__', python_exec)
-    script = script.replace('__vasp_calc_script__', vasp_calc_script)
-    script = script.replace('__mpi_machinefile__', mpi_machinefile)
-    with open('vasp_submit.pbs.sh', 'w') as fwp:
-      fwp.write(script)
-    command = 'qsub vasp_submit.pbs.sh'
-  # SLURM system
-  elif sys_type == 'slurm':
-    job_queue = calc_para_list["job_queue"]
-    submit_file = "%s/submit/slurm.sh" %vasprun_path
-    with open(submit_file) as frp:
-      script = frp.read()
-    script = script.replace('__task_name__', task_name)
-    script = script.replace('__nodes_quantity__', str(nodes_quantity))
-    script = script.replace('__total_cores__', str(total_cores))
-    if job_queue == 'unset-queue':
-      script = script.replace('#SBATCH -p', '##SBATCH -p')
-    else:
-      script = script.replace('__job_queue__', job_queue)
-    script = script.replace('__python_exec__', python_exec)
-    script = script.replace('__vasp_calc_script__', vasp_calc_script)
-    with open('vasp_submit.slurm.sh', 'w') as fwp:
-      fwp.write(script)
-    command = 'sbatch vasp_submit.slurm.sh'
-  # NSCC system
-  elif sys_type == 'nscc':
-    job_queue = calc_para_list["job_queue"]
-    submit_file = "%s/submit/nscc.sh" %vasprun_path
-    with open(submit_file) as frp:
-      script = frp.read()
-    script = script.replace('__task_name__', task_name)
-    script = script.replace('__nodes_quantity__', str(nodes_quantity))
-    script = script.replace('__total_cores__', str(total_cores))
-    if job_queue == 'unset-queue':
-      script = script.replace('#SBATCH -p', '##SBATCH -p')
-    else:
-      script = script.replace('__job_queue__', job_queue)
-    script = script.replace('__python_exec__', python_exec)
-    script = script.replace('__vasp_calc_script__', vasp_calc_script)
-    with open('vasp_submit.nscc.sh', 'w') as fwp:
-      fwp.write(script)
-    command = "yhbatch vasp_submit.nscc.sh"
-  elif sys_type == 'direct':
-    submit_file = "%s/submit/direct.sh" %vasprun_path
-    with open(submit_file) as frp:
-      script = frp.read()
-    script = script.replace('__task_name__', task_name)
-    script = script.replace('__python_exec__', python_exec)
-    script = script.replace('__vasp_calc_script__', vasp_calc_script)
-    with open('vasp_submit.direct.sh', 'w') as fwp:
-      fwp.write(script)
-    command = 'nohup bash vasp_submit.direct.sh > %s.out 2>&1 &' %task_name
+  sys_type = calc_para_list.get("sys_type")
+  vasprun_path = path_list.get("vasprun_path")
+  # Submit template & target file
+  submit_tpl_file = "%s/submit/%s.sh" %(vasprun_path, sys_type)
+  submit_trg_file = "vasp_submit.%s.sh" %(sys_type)
+  # Create the submit script
+  script = replace_script_keyword(submit_tpl_file, filename_list,
+                                  calc_para_list, path_list)
+  with open(submit_trg_file, 'w') as fwp:
+    fwp.write(script)
+  command = get_submit_command(script)
   # Submit the script
   print("[done] vasp_submit.%s.sh" %sys_type)
   _ = input("Press <Enter> to confirm the submition...")
   print("[do] Submitting the job...")
   print("[do] %s" %command)
-  job_id = os.popen(command).read().replace('\n','')
-  if (sys_type == 'slurm') or (sys_type == 'nscc'):
+  job_id = os.popen(command).read().replace('\n', '')
+  if sys_type in ('slurm', 'nscc'):
     job_id = job_id.split()[-1]
   print("[done] Job ID: " + job_id)
   return job_id
 
 
 def post_process(job_id, calc_para_list, filename_list):
+  '''post process of the submition'''
   print("")
   print("+----------------------------+")
   print("|        Post Process        |")
@@ -511,7 +496,7 @@ def post_process(job_id, calc_para_list, filename_list):
   mpi_machinefile = filename_list["mpi_machinefile"]
   task_name = calc_para_list["task_name"]
   # Kill job script
-  kill_job = ['#!/bin/bash','#','']
+  kill_job = ['#!/bin/bash', '#', '']
   if sys_type == 'pbs':
     kill_job.append('qdel %s'%(job_id))
   elif sys_type == 'slurm':
@@ -523,23 +508,23 @@ def post_process(job_id, calc_para_list, filename_list):
       fwp.write(line + '\n')
   # Clean script
   clean_folder = [
-    '#!/bin/bash',
-    '#',
-    '',
-    'read -p "Press <Enter> to confirm..."',
-    'rm -rf *-%s'%(relax_folder),
-    'rm -rf *-%s'%(ssc_folder),
-    'rm -rf *-%s'%(band_folder),
-    'rm -rf *-%s'%(dos_folder),
-    'rm -rf %s'%(result_folder),
-    'rm     POSCAR.*',
-    'rm     %s.o*'%(task_name),
-    'rm     slurm-*.out',
-    'rm     %s'%(mpi_machinefile),
-    'rm     vasp_submit.*.sh',
-    'rm     vr.allpara.json',
-    'rm     _KILLJOB.sh',
-    'rm     _CLEAN.sh '
+      '#!/bin/bash',
+      '#',
+      '',
+      'read -p "Press <Enter> to confirm..."',
+      'rm -rf *-%s'%(relax_folder),
+      'rm -rf *-%s'%(ssc_folder),
+      'rm -rf *-%s'%(band_folder),
+      'rm -rf *-%s'%(dos_folder),
+      'rm -rf %s'%(result_folder),
+      'rm     POSCAR.*',
+      'rm     %s.o*'%(task_name),
+      'rm     slurm-*.out',
+      'rm     %s'%(mpi_machinefile),
+      'rm     vasp_submit.*.sh',
+      'rm     vr.allpara.json',
+      'rm     _KILLJOB.sh',
+      'rm     _CLEAN.sh '
   ]
   with open("_CLEAN.sh", 'w') as fwp:
     for line in clean_folder:
@@ -550,6 +535,7 @@ def post_process(job_id, calc_para_list, filename_list):
 
 
 def welcome_interface():
+  '''welcomr interface'''
   # Check the folder
   if (not os.path.isfile("POSCAR")) or (not os.path.isfile("POTCAR")):
     print("[error] You are not under a VASP calculation folder.")
@@ -570,14 +556,16 @@ def welcome_interface():
 
 
 def end_interface():
+  '''end interface'''
   print("                              ")
   print("+----------------------------+")
   print("|        SUBMIT DONE         |")
   print("+----------------------------+")
-  return 0 
+  return 0
 
 
 def main():
+  '''main function'''
   welcome_interface()
   filename_list, calc_para_list, path_list = read_parameters()
   record_parameters(filename_list, calc_para_list, path_list)

@@ -48,9 +48,8 @@ def paras_read_and_write(lib_obj_list):
   with open('vr.input.bm.json', 'w') as jfwp:
     json.dump(env_para_list, jfwp, indent=2)
   # Define the env list
-  env_para_name_list = ["intel_module", "relax_vasp", "ssc_vasp", 
-                        "vaspkit", "sys_type", "cores_per_node", 
-                        "job_queue"]
+  env_para_name_list = ["prog_module", "vasp_exec", "vaspkit",
+                        "sys_type", "cores_per_node", "job_queue"]
   for env_para_name in env_para_name_list:
     print("[para] Set %-14s   ::   %s"
           %(env_para_name, str(env_para_list[env_para_name])))
@@ -86,7 +85,7 @@ def paras_read_and_write(lib_obj_list):
     print("[input] Please input the expected total cores number. [ %d ]"
           %default_etcs)
     expc_total_cores = input('> ')
-    if expc_total_cores.replace(' ','') == '':
+    if expc_total_cores.replace(' ', '') == '':
       expc_total_cores = default_etcs
     else:
       expc_total_cores = int(expc_total_cores)
@@ -101,57 +100,54 @@ def paras_read_and_write(lib_obj_list):
       print("[warning] Forcely set nodes_quantity to 1.")
     print("[para] Set nodes quantity to: %d" %(nodes_quantity))
     print("")
-    # Read in the default vaule of pbs walltime and plot window
+    # Read in the default vaule of walltime, pew, and ompcores
     if os.path.isfile('vr.input.json'):
       with open('vr.input.json') as jfrp:
         default_paras = json.load(jfrp)
-      default_pbs_walltime = default_paras.get("pbs_walltime")
-      default_pew = default_paras.get("plot_energy_window")
-      default_openmp_cpus = default_paras.get("openmp_cpus", 1)
+      default_job_walltime = default_paras.get("job_walltime", 48)
+      default_pew = default_paras.get("plot_energy_window", [-6.0, 6.0])
+      default_openmp_cores = default_paras.get("openmp_cores", 1)
     else:
-      default_pbs_walltime = 48
+      default_job_walltime = 48
       default_pew = [-6.0, 6.0]
-      default_openmp_cpus = 1
-    # Determine the pbs wall time
-    if env_para_list["sys_type"] == 'pbs':
-      print("[input] Please input PBS walltime for this object. [ %d ]" 
-            %default_pbs_walltime)
-      pbs_walltime = input('> ')
-      if pbs_walltime.replace(' ', '') == '':
-        pbs_walltime = default_pbs_walltime
-      else:
-        pbs_walltime = int(pbs_walltime)
-      if (not isinstance(pbs_walltime, int)) or (pbs_walltime <= 0):
-        print("[error] Bad input...")
-        sys.exit(1)
-      print("[para] Set PBS walltime to: %d" %pbs_walltime)
-      print("")
-    # VASP6 OMP cpus number
+      default_openmp_cores = 1
+    # Determine the walltime
+    print("[input] Please input jobs walltime for this object. [ %d ]"
+          %default_job_walltime)
+    job_walltime = input('> ')
+    if job_walltime.replace(' ', '') == '':
+      job_walltime = default_job_walltime
+    else:
+      job_walltime = int(job_walltime)
+    if (not isinstance(job_walltime, int)) or (job_walltime <= 0):
+      print("[error] Bad input...")
+      sys.exit(1)
+    print("[para] Set PBS walltime to: %d" %job_walltime)
+    print("")
+    # OpenMP cores number
     cores_per_node = env_para_list["cores_per_node"]
-    if env_para_list["sys_type"] == 'pbs':
-      print("[do] Read in the VASP6 PBS OMP cups number...")
-      if (not isinstance(default_openmp_cpus, int)) or \
-        (default_openmp_cpus <= 0):
-        default_openmp_cpus = 1
-      print("[input] Please input the number of vasp6 OMP cups. [ %d ]"
-            %(default_openmp_cpus))
-      openmp_cpus = input('> ')
-      if openmp_cpus.replace(' ','') == '':
-        openmp_cpus = default_openmp_cpus
-      else:
-        openmp_cpus = int(openmp_cpus)
-      if (cores_per_node <= 0) or \
-        (cores_per_node//openmp_cpus*openmp_cpus != cores_per_node):
-        print('[error] Invalid omp cups number...')
-        print('[tips] The OMP cups must be a divisor of the cores per node.')
-        sys.exit(1)
-      print("[para] Set the number of OMP cpus: %d" %(openmp_cpus))
-      print("")
+    print("[do] Read in the OpenMP cups number...")
+    if (not isinstance(default_openmp_cores, int)) or \
+      (default_openmp_cores <= 0):
+      default_openmp_cores = 1
+    print("[input] Please input the number of OpenMP cups. [ %d ]"
+          %(default_openmp_cores))
+    openmp_cores = input('> ')
+    if openmp_cores.replace(' ', '') == '':
+      openmp_cores = default_openmp_cores
+    else:
+      openmp_cores = int(openmp_cores)
+    if (cores_per_node <= 0) or \
+      (cores_per_node//openmp_cores*openmp_cores != cores_per_node):
+      print('[error] Invalid omp cups number...')
+      print('[tips] The OMP cups must be a divisor of the cores per node.')
+      sys.exit(1)
+    print("[para] Set the number of OMP cores: %d" %(openmp_cores))
+    print("")
     # Determine the plot energy window
-    print("[input] Please input the plot energy window. [ %d, %d ]" 
-          %(default_pew[0], default_pew[1]))
+    print("[input] Please input the plot energy window. [", default_pew, "]")
     pew = input('> ')
-    if pew.replace(' ','') == '':
+    if pew.replace(' ', '') == '':
       pew = default_pew
     else:
       pew = pew.split()[:2]
@@ -159,7 +155,7 @@ def paras_read_and_write(lib_obj_list):
     if pew[0] >= pew[1]:
       print('[error] The lower limit must be samller than the upper...')
       sys.exit(1)
-    print("[para] Set plot window to: [%f, %f]" %(pew[0], pew[1]))
+    print("[para] Set plot window to:", pew)
     print("")
     # Determine the task list
     print("[para] Set task list to: 'TTTT' ")
@@ -170,8 +166,8 @@ def paras_read_and_write(lib_obj_list):
       calc_para_list[env_para_name] = env_para_list[env_para_name]
     calc_para_list["task_name"] = task_name
     calc_para_list["nodes_quantity"] = nodes_quantity
-    calc_para_list["openmp_cpus"] = openmp_cpus
-    calc_para_list["pbs_walltime"] = pbs_walltime
+    calc_para_list["openmp_cores"] = openmp_cores
+    calc_para_list["job_walltime"] = job_walltime
     calc_para_list["plot_energy_window"] = pew
     calc_para_list["task_list"] = 'TTTT'
     with open('vr.input.json', 'w') as jfwp:
@@ -191,10 +187,10 @@ def submit_jobs(lib_obj_list):
       calc_para_list = json.load(jfrp)
     nodes_quantity = calc_para_list["nodes_quantity"]
     cores_per_node = calc_para_list["cores_per_node"]
+    openmp_cores = calc_para_list["openmp_cores"]
     total_cores = nodes_quantity * cores_per_node
-    print("[submit] BM :: %-60s :: Nodes %3d  Cores %5d" %(lib_obj,
-                                                           nodes_quantity, 
-                                                           total_cores))
+    print("[submit] BM :: %-40s :: Nodes-%-3d Cores-%-4d OMPUs-%-4d"
+          %(lib_obj, nodes_quantity, total_cores, openmp_cores))
     command = '(echo; echo; echo; echo; echo; echo; echo; echo; echo; echo) \
                | %s > /dev/null' %(vasprun)
     _ = os.system(command)

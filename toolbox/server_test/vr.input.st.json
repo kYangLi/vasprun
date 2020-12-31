@@ -1,18 +1,16 @@
 {
   "task_name": "vasprun",
   "task_list": "TTTT",
-  "intel_module": "ml intel/20u1",
-  "relax_vasp": "/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched_20u1/bin/vasp_ncl",
-  "ssc_vasp": "/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched_20u1/bin/vasp_ncl",
-  "vaspkit": "/home/liyang1/Software/CalcProg/VASP/Tools/VaspKit/vaspkit-1.12/bin/vaspkit",
-  "sys_type": "pbs",
-  "cores_per_node": 24,
+  "prog_module": "module load mvapich2/2.3.2-icc-18.0.1",
+  "vasp_exec": "/GPUFS/thu_xuyong_2/Apps/VASP/Main/vasp-544-patched/vasp_mvapich2-2.3.2+icc-18.0.1/bin/vasp_ncl",
+  "vaspkit": "/GPUFS/thu_xuyong_2/Apps/VASP/Tools/vaspkit/vaspkit-1.12/bin/vaspkit",
+  "sys_type": "nscc",
+  "cores_per_node": 36,
   "nodes_quantity": 1,
   "pbs_walltime": 48,
-  "job_queue": "unset-queue",
+  "job_queue": "work",
   "plot_energy_window": [
     -2,
     2
-  ],
-  "hostname": "w003"
+  ]
 }

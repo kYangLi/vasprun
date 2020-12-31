@@ -47,20 +47,22 @@ To enable this script, you need perpare the following files:
 The `vr.input.json` contains the necessary parameters for a VASP task.
 Here is an example of the `vr.input.json`:
 ```json
-{
-  "task_name": "u3_cl-fm",
-  "task_list": "TTTF",
-  "intel_module": "ml intel/20u1",
-  "relax_vasp": "/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched_20u1/bin/vasp_ncl",
-  "ssc_vasp": "/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched_20u1/bin/vasp_ncl",
-  "vaspkit": "/home/liyang1/Software/CalcProg/VASP/Tools/VaspKit/vaspkit-1.12/bin/vaspkit",
+{ 
+  "task_name": "vasprun",
+  "task_list": "TTTT",
+  "prog_module": "ml intel/20u1",
+  "vasp_exec": "/home/bin/vasp_ncl",
+  "vaspkit": "/home/bin/vaspkit-1.12",
   "sys_type": "pbs",
   "cores_per_node": 24,
-  "openmp_cpus": 1,
+  "nodes_quantity": 1,
+  "openmp_cores": 1,
+  "job_walltime": 48,
   "job_queue": "unset-queue",
-  "nodes_quantity": 2,
-  "pbs_walltime": 48,
-  "plot_energy_window": [-2.0, 2.0]
+  "plot_energy_window": [
+    -2,
+    2
+  ]
 }
 ```
 

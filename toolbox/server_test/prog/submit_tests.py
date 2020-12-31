@@ -69,13 +69,12 @@ def paras_read_and_write(calc_obj_list):
   with open('vr.input.st.json', 'w') as jfwp:
     json.dump(env_para_list, jfwp, indent=2)
   # Define the env name
-  env_para_name_list = ["intel_module", "relax_vasp", "ssc_vasp",
-                        "vaspkit", "sys_type", "cores_per_node",
-                        "job_queue"]
+  env_para_name_list = ["prog_module", "vasp_exec", "vaspkit",
+                        "sys_type", "cores_per_node", "job_queue"]
   for env_para_name in env_para_name_list:
     print("[para] Set %-14s   ::   %s"
           %(env_para_name, str(env_para_list.get(env_para_name, None))))
-  print("[info] Exit this script to modify those parameters in vr.input.st.json .")
+  print("[info] Exit this process to modify those parameters in vr.input.st.json .")
   # Determine the nodes quantity
   for calc_obj in calc_obj_list:
     print("")
@@ -130,34 +129,32 @@ def paras_read_and_write(calc_obj_list):
         print("[warning] Forcely set nodes_quantity to 1.")
     print("[para] Using %d nodes." %nodes_quantity)
     print("")
-    # Read the VASP6 OMP cpus number
+    # Read the OpenMP cores number
     cores_per_node = env_para_list["cores_per_node"]
-    if env_para_list["sys_type"] == 'pbs':
-      print("[do] Read in the VASP6 PBS OMP cups number...")
-      default_openmp_cpus = calc_para_list.get("openmp_cpus", 1)
-      if (not isinstance(default_openmp_cpus, int)) or \
-        (default_openmp_cpus <= 0):
-        default_openmp_cpus = 1
-      print("[input] Please input the number of vasp6 OMP cups. [ %d ]"
-            %(default_openmp_cpus))
-      openmp_cpus = input('> ')
-      if openmp_cpus.replace(' ','') == '':
-        openmp_cpus = default_openmp_cpus
-      else:
-        openmp_cpus = int(openmp_cpus)
-      if (cores_per_node <= 0) or \
-        (cores_per_node//openmp_cpus*openmp_cpus != cores_per_node):
-        print('[error] Invalid omp cups number...')
-        print('[tips] The OMP cups must be a divisor of the cores per node.')
-        sys.exit(1)
-      print("[para] Set the number of OMP cpus: %d" %(openmp_cpus))
-      print("")
+    print("[do] Read in the OpenMP cups number...")
+    default_openmp_cores = calc_para_list.get("openmp_cores", 1)
+    if (not isinstance(default_openmp_cores, int)) or \
+      (default_openmp_cores <= 0):
+      default_openmp_cores = 1
+    print("[input] Please input the number of OpenMP cups. [ %d ]"
+          %(default_openmp_cores))
+    openmp_cores = input('> ')
+    if openmp_cores.replace(' ', '') == '':
+      openmp_cores = default_openmp_cores
+    else:
+      openmp_cores = int(openmp_cores)
+    if (cores_per_node <= 0) or \
+      (cores_per_node//openmp_cores*openmp_cores != cores_per_node):
+      print('[error] Invalid omp cups number...')
+      print('[tips] The OMP cups must be a divisor of the cores per node.')
+      sys.exit(1)
+    print("[para] Set the number of OMP cores: %d" %(openmp_cores))
+    print("")
     # Write paras into the calc vr.input.json
     for env_para_name in env_para_name_list:
       calc_para_list[env_para_name] = env_para_list[env_para_name]
     calc_para_list["nodes_quantity"] = nodes_quantity
-    if env_para_list["sys_type"] == 'pbs':
-      calc_para_list["openmp_cpus"] = openmp_cpus
+    calc_para_list["openmp_cores"] = openmp_cores
     calc_para_list["task_name"] = task_name
     with open('vr.input.json', 'w') as jfwp:
       json.dump(calc_para_list, jfwp, indent=2)
@@ -176,9 +173,10 @@ def submit_jobs(calc_obj_list):
       calc_para_list = json.load(jfrp)
     nodes_quantity = calc_para_list["nodes_quantity"]
     cores_per_node = calc_para_list["cores_per_node"]
+    openmp_cores = calc_para_list["openmp_cores"]
     total_cores = nodes_quantity * cores_per_node
-    print("[submit] ST :: %-60s :: Nodes %3d   Cores %4d"
-          %(calc_obj, nodes_quantity, total_cores))
+    print("[submit] ST :: %-40s :: Nodes-%-3d Cores-%-4d OMPUs-%-4d"
+          %(calc_obj, nodes_quantity, total_cores, openmp_cores))
     command = '(echo; echo; echo; echo; echo; echo; echo; echo; echo; echo) \
                | %s > /dev/null' %(vasprun)
     _ = os.system(command)
@@ -206,20 +204,20 @@ def post_process(calc_obj_list):
   # Create clean file
   print("[do] Create the FILE CLEAN script...")
   clean_file = [
-  '#!/bin/bash',
-  '#',
-  '',
-  'rm -rf calc',
-  'rm -rf _trash',
-  'rm     vasprun_path.json',
-  'rm     _ST-KILLJOBS.sh',
-  'rm     _ST-CLEAN.sh',
-  ] 
-  with open('_ST-CLEAN.sh','w') as fwp:
-    for line in clean_file:  
+      '#!/bin/bash',
+      '#',
+      '',
+      'rm -rf calc',
+      'rm -rf _trash',
+      'rm     vasprun_path.json',
+      'rm     _ST-KILLJOBS.sh',
+      'rm     _ST-CLEAN.sh',
+  ]
+  with open('_ST-CLEAN.sh', 'w') as fwp:
+    for line in clean_file:
       fwp.write(line + '\n')
   _ = os.system('chmod 740 _ST-CLEAN.sh')
-  return 0 
+  return 0
 
 def main():
   env_check()
@@ -230,7 +228,7 @@ def main():
   time.sleep(3)
   post_process(calc_obj_list)
   print("[done]")
-  return 0 
+  return 0
 
 
 if __name__ == "__main__":

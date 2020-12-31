@@ -1,15 +1,17 @@
 {
-  "task_name":"vasprun",
-  "task_list":"TTTT",
-  "intel_module": "ml intel/20u1",
-  "relax_vasp":"/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched_20u1/bin/vasp_ncl",
-  "ssc_vasp":"/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched_20u1/bin/vasp_ncl",
-  "vaspkit":"/home/liyang1/Software/CalcProg/VASP/Tools/VaspKit/vaspkit-1.12/bin/vaspkit",
-  "sys_type":"pbs",
-  "cores_per_node":24,
-  "openmp_cpus":1,
-  "nodes_quantity":1,
-  "pbs_walltime":48,
-  "job_queue":"unset-queue",
-  "plot_energy_window":[-2,2]
+  "task_name": "Graphene",
+  "task_list": "TTTT",
+  "prog_module": "ml intel/20u1",
+  "vasp_exec": "/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched/vasp_intel20u1/bin/vasp_ncl",
+  "vaspkit": "/home/liyang1/Software/ScrpBase/vasp/vasprun/external/vaspkit/vaspkit-1.12",
+  "sys_type": "pbs",
+  "cores_per_node": 24,
+  "nodes_quantity": 1,
+  "openmp_cores": 1,
+  "job_walltime": 1,
+  "job_queue": "short",
+  "plot_energy_window": [
+    -2,
+    2
+  ]
 }
