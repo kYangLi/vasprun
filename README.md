@@ -27,24 +27,27 @@ echo "export PATH=<vasprun>/<path>/:${PATH}" >> ~/.bashrc
 ## Input File
   
 To enable this script, you need perpare the following files:
-- `vr.input.json` ==> (Optional)
-- `POSCAR` =========> (Necessary)
-- `POTCAR` =========> (Necessary)
-- `KPOINTS.RELAX` ==> (Optional)
-- `INCAR.RELAX` ====> (Optional)
-- `WAVECAR.RELAX` ==> (Optional)
-- `CHGCAR.RELAX` ===> (Optional)
-- `KPOINTS.SSC` ====> (Optional)
-- `INCAR.SSC` ======> (Optional)
-- `WAVECAR.SSC` ====> (Optional)
-- `CHGCAR.SSC` =====> (Optional)
-- `KPOINTS.BAND` ===> (Optional)
-- `INCAR.BAND` =====> (Optional)
-- `KPOINTS.DOS` ====> (Optional)
-- `INCAR.DOS` ======> (Optional)
+
+| File Name       | Necessarity | Descripution |
+| --------------- |:-----------:|:------------ |
+| `vr.input.json` | Optional  |vasprun input file|
+| `POSCAR`        | Necessary |VASP POSCAR|
+| `POTCAR`        | Necessary |VASP POTCAR|
+| `KPOINTS.RELAX` | Optional  |VASP KPOINTS for relax step|
+| `INCAR.RELAX`   | Optional  |VASP INCAR for relax step|
+| `WAVECAR.RELAX` | Optional  |VASP WAVECAR for relax step to continue calculation|
+| `CHGCAR.RELAX`  | Optional  |VASP CHGCAR for relax step to continue calculation|
+| `KPOINTS.SSC`   | Optional  |VASP KPOINTS for static step|
+| `INCAR.SSC`     | Optional  |VASP INCAR for static step|
+| `WAVECAR.SSC`   | Optional  |VASP WAVECAR for static step to continue calculation|
+| `CHGCAR.SSC`    | Optional  |VASP CHGCAR for static step to continue calculation|
+| `KPOINTS.BAND`  | Optional  |VASP KPOINTS for band step|
+| `INCAR.BAND`    | Optional  |VASP INCAR for band step|
+| `KPOINTS.DOS`   | Optional  |VASP KPOINTS for DOS step|
+| `INCAR.DOS`     | Optional  |VASP INCAR for DOS step|
 
 ### `vr.input.json`
-The `vr.input.json` contains the necessary parameters for a VASP task.
+The `vr.input.json` contains the necessary parameters for a VASP task. 
 Here is an example of the `vr.input.json`:
 ```json
 { 
@@ -65,6 +68,7 @@ Here is an example of the `vr.input.json`:
   ]
 }
 ```
+You can run the vasprun main script to check their meaning.
 
 ### `POSCAR`
 VASP POSCAR file.
