@@ -6,9 +6,9 @@
 
 `Start Date` 2020.8.3
 
-`Last Update` 2019.10.10
+`Last Update` 2019.12.31
 
-`Version` 1.1.0
+`Version` 1.2.0
 
 ## Description
 
