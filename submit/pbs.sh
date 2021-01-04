@@ -1,5 +1,6 @@
 #!/bin/bash
 ####::SUBMIT_COMMAND::qsub __submit_trg_script__
+####::KILL_COMMAND::qdel __job_id__
 #PBS -N __task_name__
 #PBS -l nodes=__nodes_quantity__:ppn=__cores_per_node__
 #PBS -l walltime=__job_walltime__:00:00

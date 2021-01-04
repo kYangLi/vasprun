@@ -1,5 +1,6 @@
 #!/bin/bash
-####::SUBMIT_COMMAND::nohup bash __submit_trg_script__ > %s.out 2>&1 &
+####::SUBMIT_COMMAND::nohup bash __submit_trg_script__ < /dev/null > %s.out 2>&1 & echo $!
+####::KILL_COMMAND::kill -TERM -- -__job_id__
 #
 declare -r  PYTHON_EXEC='__python_exec__'
 declare -r  VASP_CALC_SCRIPT='__vasp_calc_script__'

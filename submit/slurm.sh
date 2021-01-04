@@ -1,5 +1,6 @@
 #!/bin/bash
 ####::SUBMIT_COMMAND::sbatch __submit_trg_script__
+####::KILL_COMMAND::scancel __job_id__
 #SBATCH --job-name=__task_name__
 #SBATCH --partition=__job_queue__
 #SBATCH --time=__job_walltime__:00:00 

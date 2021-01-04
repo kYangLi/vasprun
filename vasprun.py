@@ -65,7 +65,12 @@ def read_parameters():
   path_list = {"vasprun_path" : vasprun_path,
                "python_exec"  : python_exec}
   calc_para_list = check_input_json(vasprun_path)
-  sys_type_list = ["pbs", "slurm", "nscc", "direct"]
+  # Read in the system type
+  submit_temp_path = os.path.join(vasprun_path, "submit")
+  sys_type_list = []
+  for sys_type_file in os.listdir(submit_temp_path):
+    if sys_type_file.endswith(".sh"):
+      sys_type_list.append(sys_type_file[:-3])
   # Remove the older RESULT
   result_folder = filename_list["result_folder"]
   if os.path.isdir(result_folder):
@@ -282,7 +287,8 @@ def read_parameters():
     default_pew = calc_para_list.get("plot_energy_window")
     if not default_pew:
       default_pew = [-6, 6]
-    print("[input] Please input the plot energy window. [", default_pew, "]")
+    str_default_pew = str(default_pew[0]) + " " + str(default_pew[1])
+    print("[input] Please input the energy window. [ %s ]" %(str_default_pew))
     pew = input('> ')
     if pew.replace(' ', '') == '':
       pew = default_pew
@@ -450,6 +456,18 @@ def get_submit_command(script):
   return submit_command
 
 
+def get_kill_command(script):
+  '''get the job kill command (such as qdel)'''
+  command_line_tag = "####::KILL_COMMAND::"
+  script_lines = script.split('\n')
+  for script_line in script_lines:
+    if command_line_tag in script_line:
+      kill_command = \
+        script_line.replace(command_line_tag, "").replace("\n", "")
+      break
+  return kill_command
+
+
 def vasp_submit(filename_list, calc_para_list, path_list):
   '''submit the jobs'''
   print("+----------------------------+")
@@ -474,7 +492,14 @@ def vasp_submit(filename_list, calc_para_list, path_list):
   print("[do] Submitting the job...")
   print("[do] %s" %command)
   job_id = os.popen(command).read().replace('\n', '')
-  if sys_type in ('slurm', 'nscc'):
+  if sys_type == 'direct':
+    pid_pgid_list = os.popen('ps x -o  "%p %r"').read().split('\n')
+    for pid_pgit in pid_pgid_list:
+      pid_pgit = pid_pgit.split()
+      if job_id == pid_pgit[0]:
+        job_id = pid_pgit[1]
+        break
+  elif sys_type in ('slurm', 'nscc'):
     job_id = job_id.split()[-1]
   print("[done] Job ID: " + job_id)
   return job_id
@@ -495,14 +520,13 @@ def post_process(job_id, calc_para_list, filename_list):
   result_folder = filename_list["result_folder"]
   mpi_machinefile = filename_list["mpi_machinefile"]
   task_name = calc_para_list["task_name"]
+  submit_trg_file = "vasp_submit.%s.sh" %(sys_type)
   # Kill job script
   kill_job = ['#!/bin/bash', '#', '']
-  if sys_type == 'pbs':
-    kill_job.append('qdel %s'%(job_id))
-  elif sys_type == 'slurm':
-    kill_job.append('scancel %s'%(job_id))
-  elif sys_type == 'nscc':
-    kill_job.append('yhcancel %s'%(job_id))
+  with open(submit_trg_file) as frp:
+    script = frp.read()
+  kill_command = get_kill_command(script)
+  kill_job.append(kill_command.replace("__job_id__", job_id))
   with open("_KILLJOB.sh", 'w') as fwp:
     for line in kill_job:
       fwp.write(line + '\n')
@@ -546,11 +570,11 @@ def welcome_interface():
   print("====| Welcome to vasprun |====")
   print("    +--------------------+    ")
   print("                              ")
-  print("+----------------------------+")
-  print("|     Tips Before Start      |")
-  print("+----------------------------+")
-  print("[tips] Please double check the vasprun(.py) are in the vasprun path.")
-  print("[tips] Please make sure you are using vaspkit-1.12 ...")
+  # print("+----------------------------+")
+  # print("|     Tips Before Start      |")
+  # print("+----------------------------+")
+  # print("[tips] Please double check the vasprun(.py) are in the vasprun path.")
+  # print("[tips] Please make sure you are using vaspkit-1.12 ...")
   _ = input('Press <Enter> to start the vasprun process... ')
   return 0
 
