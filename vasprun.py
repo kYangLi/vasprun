@@ -303,16 +303,19 @@ def read_parameters():
     print("[para] Plot energy window: ", pew)
     print("")
     # Relax Times
-    print("[do] Read in the RELAX times...")
-    default_relax_times = calc_para_list.get("relax_times", 1)
-    print("[input] Please input the relax times. [ %d ]" %default_relax_times)
-    relax_times = input('> ')
-    if relax_times.replace(' ', '') == '':
-      relax_times = default_relax_times
+    if task_list[1] == 'T':
+      print("[do] Read in the RELAX times...")
+      default_relax_times = calc_para_list.get("relax_times", 1)
+      print("[input] Please input the relax times. [ %d ]" %default_relax_times)
+      relax_times = input('> ')
+      if relax_times.replace(' ', '') == '':
+        relax_times = default_relax_times
+      else:
+        relax_times = int(relax_times)
+      calc_para_list["relax_times"] = relax_times
+      print("")
     else:
-      relax_times = int(relax_times)
-    calc_para_list["relax_times"] = relax_times
-    print("")
+      calc_para_list["relax_times"] = 1
   ## Return Values
   return filename_list, calc_para_list, path_list
 
@@ -547,7 +550,8 @@ def post_process(job_id, calc_para_list, filename_list):
       '#',
       '',
       'read -p "Press <Enter> to confirm..."',
-      'rm -rf *-%s'%(relax_folder),
+      'rm -rf 0-%s.round-*'%(relax_folder),
+      'rm -rf 1-%s'%(relax_folder),
       'rm -rf *-%s'%(ssc_folder),
       'rm -rf *-%s'%(band_folder),
       'rm -rf *-%s'%(dos_folder),

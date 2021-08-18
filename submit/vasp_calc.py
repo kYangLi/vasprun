@@ -580,10 +580,13 @@ def main():
   ## Calculate
   relax_times = calc_para_list["relax_times"]
   for relax_i in range(1, relax_times):
-    relax(filename_list, calc_para_list, 1)
     relax_folder = filename_list["relax_folder"]
     index_relax_folder = "1-%s" %relax_folder
     relax_folder_each_round = "0-%s.round-%d" %(relax_folder, relax_i)
+    if os.path.isdir(relax_folder_each_round):
+      print("[skip] %s already exist, skip...")
+      continue
+    relax(filename_list, calc_para_list, 1)
     os.rename(index_relax_folder, relax_folder_each_round)
   task_index = relax(filename_list, calc_para_list, task_index)
   task_index = ssc(filename_list, calc_para_list, task_index)
