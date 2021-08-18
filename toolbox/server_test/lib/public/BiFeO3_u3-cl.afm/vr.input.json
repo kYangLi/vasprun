@@ -1,13 +1,14 @@
 {
   "prog_module": "ml intel/20u1",
-  "vasp_exec": "/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched_20u1/bin/vasp_ncl",
+  "vasp_exec": "/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched/vasp_intel20u1/bin/vasp_ncl",
+  "vaspkit": "/home/liyang1/Software/CalcProg/VASP/Tools/vaspkit/vaspkit-1.12/bin/vaspkit",
   "sys_type": "pbs",
   "cores_per_node": 24,
   "job_queue": "unset-queue",
-  "task_name": "bm.BiFeO3_u3-cl.afm",
+  "task_name": "BiFeO3_u3-cl.afm",
   "nodes_quantity": 1,
   "openmp_cores": 1,
-  "pbs_walltime": 48,
+  "job_walltime": 48,
   "plot_energy_window": [
     -3.0,
     3.0

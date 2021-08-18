@@ -184,10 +184,8 @@ def relax(filename_list, calc_para_list, task_index):
   task_list = calc_para_list["task_list"]
   task_name = calc_para_list["task_name"]
   index_relax_folder = "%d-%s" %(task_index, relax_folder)
-  if file_exist('-' + relax_folder):
+  if file_exist('1-' + relax_folder):
     print("[info] Folder %s already exist, skip." %relax_folder)
-    command = "mv *-%s %s" %(relax_folder, index_relax_folder)
-    _ = os.system(command)
     # Recollect the result
     os.chdir(index_relax_folder)
     with open("RUN_TIME") as frp:
@@ -580,6 +578,13 @@ def main():
   task_index = 1
   _ = os.system("cp POSCAR POSCAR.INIT")
   ## Calculate
+  relax_times = calc_para_list["relax_times"]
+  for relax_i in range(1, relax_times):
+    relax(filename_list, calc_para_list, 1)
+    relax_folder = filename_list["relax_folder"]
+    index_relax_folder = "1-%s" %relax_folder
+    relax_folder_each_round = "0-%s.round-%d" %(relax_folder, relax_i)
+    os.rename(index_relax_folder, relax_folder_each_round)
   task_index = relax(filename_list, calc_para_list, task_index)
   task_index = ssc(filename_list, calc_para_list, task_index)
   task_index = band(filename_list, calc_para_list, path_list, task_index)

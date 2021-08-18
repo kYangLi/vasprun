@@ -302,6 +302,17 @@ def read_parameters():
     calc_para_list["plot_energy_window"] = pew
     print("[para] Plot energy window: ", pew)
     print("")
+    # Relax Times
+    print("[do] Read in the RELAX times...")
+    default_relax_times = calc_para_list.get("relax_times", 1)
+    print("[input] Please input the relax times. [ %d ]" %default_relax_times)
+    relax_times = input('> ')
+    if relax_times.replace(' ', '') == '':
+      relax_times = default_relax_times
+    else:
+      relax_times = int(relax_times)
+    calc_para_list["relax_times"] = relax_times
+    print("")
   ## Return Values
   return filename_list, calc_para_list, path_list
 

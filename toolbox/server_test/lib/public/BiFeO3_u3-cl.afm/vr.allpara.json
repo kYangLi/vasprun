@@ -1,0 +1,38 @@
+{
+  "filename": {
+    "mpi_machinefile": "cores-list",
+    "relax_folder": "RELAX",
+    "ssc_folder": "SSC",
+    "band_folder": "BAND",
+    "dos_folder": "DOS",
+    "result_folder": "RESULT",
+    "band_res_folder": "band",
+    "dos_res_folder": "dos",
+    "result_json": "result.json",
+    "vasp_log": "VASP.log",
+    "vaspkit_log": "VASPKIT.log",
+    "band_fig": "band",
+    "dos_fig": "dos"
+  },
+  "calc_para": {
+    "prog_module": "ml intel/20u1",
+    "vasp_exec": "/home/liyang1/Software/CalcProg/VASP/Main/vasp-544-patched/vasp_intel20u1/bin/vasp_ncl",
+    "vaspkit": "/home/liyang1/Software/CalcProg/VASP/Tools/vaspkit/vaspkit-1.12/bin/vaspkit",
+    "sys_type": "pbs",
+    "cores_per_node": 24,
+    "job_queue": "unset-queue",
+    "task_name": "BiFeO3_u3-cl.afm",
+    "nodes_quantity": 1,
+    "openmp_cores": 1,
+    "job_walltime": 48,
+    "plot_energy_window": [
+      -3.0,
+      3.0
+    ],
+    "task_list": "TTTT"
+  },
+  "path_list": {
+    "vasprun_path": "/home/liyang1/Software/ScrpBase/vasp/vasprun",
+    "python_exec": "/home/liyang1/Software/EnvsProg/Anaconda3/anaconda3/bin/python"
+  }
+}
