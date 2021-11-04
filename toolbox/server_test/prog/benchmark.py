@@ -191,7 +191,7 @@ def submit_jobs(lib_obj_list):
     total_cores = nodes_quantity * cores_per_node
     print("[submit] BM :: %-40s :: Nodes-%-3d Cores-%-4d OMPUs-%-4d"
           %(lib_obj, nodes_quantity, total_cores, openmp_cores))
-    command = '(echo; echo; echo; echo; echo; echo; echo; echo; echo; echo) \
+    command = '(echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo; echo) \
                | %s > /dev/null' %(vasprun)
     _ = os.system(command)
     os.chdir('../../..')
